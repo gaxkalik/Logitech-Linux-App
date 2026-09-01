@@ -1,0 +1,13 @@
+# Python bytecode & cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Temporary logs
+*.log
+event_log.txt
+/tmp/
+
+# OS metadata
+.DS_Store
+Thumbs.db

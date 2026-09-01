@@ -1,0 +1,13 @@
+[Unit]
+Description=Apply OpenRGB ALL Black Profile at Login
+After=graphical-session.target openrgb.service
+Wants=openrgb.service
+
+[Service]
+Type=oneshot
+ExecStartPre=/bin/sleep 2
+ExecStart=/usr/bin/openrgb --profile "ALL Black"
+RemainAfterExit=yes
+
+[Install]
+WantedBy=default.target
