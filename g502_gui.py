@@ -4,11 +4,11 @@ AGY Logitech G502 Control Center & Macro Customization Studio
 --------------------------------------------------------------
 A modern PyQt6 GUI application to configure:
   - Customizable G502 Macros (Actions, Custom Keys, Hold & Delay Timings)
-  - Live reload via ~/.config/g502_macros/config.json + SIGHUP
+  - Automatic systemd service restart on save
+  - Comprehensive field explanations and tooltips
   - Hardware DPI & Onboard Profiles via ratbagctl
   - KDE KWin Pointer Acceleration Profile (Flat vs Adaptive) & Pointer Speed live
   - OpenRGB Profile presets (ALL Black)
-  - Systemd User Service autostart controls
 """
 
 import sys
@@ -87,6 +87,13 @@ QGroupBox::title {
     left: 12px;
     padding: 0 6px;
     color: #38BDF8;
+}
+
+QFrame#guideBox {
+    background-color: #091322;
+    border: 1px solid #1E3A8A;
+    border-radius: 8px;
+    padding: 10px;
 }
 
 QPushButton {
@@ -265,7 +272,7 @@ class G502ControlApp(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("AGY Logitech G502 Control Center & Macro Studio")
-        self.resize(920, 680)
+        self.resize(940, 720)
         self.setStyleSheet(QSS_STYLE)
 
         self.ratbag_dev = get_g502_ratbag_device()
@@ -342,8 +349,27 @@ class G502ControlApp(QMainWindow):
     def create_macro_studio_tab(self):
         tab = QWidget()
         layout = QVBoxLayout(tab)
-        layout.setSpacing(16)
+        layout.setSpacing(12)
         layout.setContentsMargins(12, 12, 12, 12)
+
+        # Field Guide Banner
+        guide = QFrame()
+        guide.setObjectName("guideBox")
+        guide_layout = QVBoxLayout(guide)
+        guide_layout.setContentsMargins(12, 10, 12, 10)
+        guide_title = QLabel("💡 Macro Studio Field Guide:")
+        guide_title.setFont(QFont("Segoe UI", 11, QFont.Weight.Bold))
+        guide_title.setStyleSheet("color: #38BDF8;")
+        guide_text = QLabel(
+            "• Macro Action: Selects the action performed when pressing or holding the button.\n"
+            "• Hold (ms): Duration in milliseconds that the button/key is held down during each loop cycle (default: 20ms).\n"
+            "• Delay (ms): Pause duration in milliseconds between repeated clicks/keypresses (default: 50ms).\n"
+            "• Custom Key: The specific keyboard key to repeat when Custom Key Loop is selected."
+        )
+        guide_text.setStyleSheet("color: #94A3B8; font-size: 12px;")
+        guide_layout.addWidget(guide_title)
+        guide_layout.addWidget(guide_text)
+        layout.addWidget(guide)
 
         config_data = self.load_macro_config()
         buttons_cfg = config_data.get("buttons", {})
@@ -354,7 +380,7 @@ class G502ControlApp(QMainWindow):
 
         scroll_content = QWidget()
         scroll_layout = QVBoxLayout(scroll_content)
-        scroll_layout.setSpacing(12)
+        scroll_layout.setSpacing(10)
 
         buttons_info = [
             ("G8", "G8 Button (DPI Up)"),
@@ -374,10 +400,10 @@ class G502ControlApp(QMainWindow):
             # Action Selector
             box_layout.addWidget(QLabel("Macro Action:"), 0, 0)
             combo_action = QComboBox()
+            combo_action.setToolTip("Select the action performed when holding this button.")
             for label, code in ACTION_TYPES:
                 combo_action.addItem(label, code)
 
-            # Set current action index
             current_action = btn_data.get("action_type", "LEFT_CLICK_LOOP")
             for idx in range(combo_action.count()):
                 if combo_action.itemData(idx) == current_action:
@@ -389,6 +415,7 @@ class G502ControlApp(QMainWindow):
             lbl_custom_key = QLabel("Custom Key:")
             box_layout.addWidget(lbl_custom_key, 0, 2)
             combo_key = QComboBox()
+            combo_key.setToolTip("Pick the specific keyboard key to repeat.")
             for label, code in CUSTOM_KEYS:
                 combo_key.addItem(label, code)
 
@@ -402,6 +429,7 @@ class G502ControlApp(QMainWindow):
             # Hold Duration (ms)
             box_layout.addWidget(QLabel("Hold (ms):"), 1, 0)
             spin_hold = QSpinBox()
+            spin_hold.setToolTip("Milliseconds key/click is held down per cycle.")
             spin_hold.setRange(5, 500)
             spin_hold.setSingleStep(5)
             spin_hold.setValue(btn_data.get("hold_ms", 20))
@@ -410,6 +438,7 @@ class G502ControlApp(QMainWindow):
             # Repeat Delay (ms)
             box_layout.addWidget(QLabel("Delay (ms):"), 1, 2)
             spin_delay = QSpinBox()
+            spin_delay.setToolTip("Milliseconds pause between repeat clicks/presses.")
             spin_delay.setRange(5, 1000)
             spin_delay.setSingleStep(5)
             spin_delay.setValue(btn_data.get("delay_ms", 50))
@@ -439,7 +468,7 @@ class G502ControlApp(QMainWindow):
         # Save Button Bar
         btn_bar = QHBoxLayout()
 
-        btn_save = QPushButton("Save & Apply All Macro Settings")
+        btn_save = QPushButton("Save & Apply All Macro Settings (Auto-Restarts Service)")
         btn_save.setObjectName("accentBtn")
         btn_save.setFixedHeight(40)
         btn_save.setFont(QFont("Segoe UI", 11, QFont.Weight.Bold))
@@ -469,16 +498,37 @@ class G502ControlApp(QMainWindow):
         with open(CONFIG_PATH, 'w') as f:
             json.dump(new_cfg, f, indent=4)
 
-        # Send SIGHUP signal to macro daemon to reload config dynamically
-        subprocess.run(['pkill', '-HUP', '-f', 'g502_macro_daemon.py'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        # Automatically restart systemd user service so changes take effect instantly
+        subprocess.run(['systemctl', '--user', 'restart', 'g502-macros.service'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
-        QMessageBox.information(self, "Macro Studio", "Macro settings saved & applied live to G502 daemon!")
+        self.update_daemon_status()
+        self.refresh_logs()
+        QMessageBox.information(self, "Macro Studio", "Macro settings saved! Service automatically restarted & applied live.")
 
     def create_dashboard_tab(self):
         tab = QWidget()
         layout = QVBoxLayout(tab)
         layout.setSpacing(16)
         layout.setContentsMargins(12, 12, 12, 12)
+
+        # Guide Banner
+        guide = QFrame()
+        guide.setObjectName("guideBox")
+        guide_layout = QVBoxLayout(guide)
+        guide_layout.setContentsMargins(12, 10, 12, 10)
+        guide_title = QLabel("💡 DPI & Pointer Speed Guide:")
+        guide_title.setFont(QFont("Segoe UI", 11, QFont.Weight.Bold))
+        guide_title.setStyleSheet("color: #38BDF8;")
+        guide_text = QLabel(
+            "• Hardware DPI: Mouse sensor resolution stored on G502 onboard memory.\n"
+            "• Flat Acceleration (1:1): Raw linear input matching Windows 6/11 with Enhance Pointer Precision OFF.\n"
+            "• Adaptive Acceleration: Dynamic speed curve that accelerates when flicking the mouse.\n"
+            "• Pointer Speed Scale: Overall desktop cursor speed multiplier."
+        )
+        guide_text.setStyleSheet("color: #94A3B8; font-size: 12px;")
+        guide_layout.addWidget(guide_title)
+        guide_layout.addWidget(guide_text)
+        layout.addWidget(guide)
 
         # DPI Settings Group
         dpi_group = QGroupBox("Hardware DPI Settings (Onboard Profiles 0, 1, 2)")
