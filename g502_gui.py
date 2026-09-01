@@ -268,10 +268,14 @@ def get_g502_ratbag_device():
         pass
     return None
 
+ICON_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'icon.png')
+
 class G502ControlApp(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("AGY Logitech G502 Control Center & Macro Studio")
+        if os.path.exists(ICON_PATH):
+            self.setWindowIcon(QIcon(ICON_PATH))
         self.resize(940, 720)
         self.setStyleSheet(QSS_STYLE)
 
@@ -718,6 +722,8 @@ class G502ControlApp(QMainWindow):
 
 def main():
     app = QApplication(sys.argv)
+    if os.path.exists(ICON_PATH):
+        app.setWindowIcon(QIcon(ICON_PATH))
     window = G502ControlApp()
     window.show()
     sys.exit(app.exec())

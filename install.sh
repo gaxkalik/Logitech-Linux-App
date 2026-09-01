@@ -17,7 +17,9 @@ mkdir -p ~/.local/share/applications
 cp "$SCRIPT_DIR/g502-macros.service" ~/.config/systemd/user/
 cp "$SCRIPT_DIR/openrgb-apply.service" ~/.config/systemd/user/
 
-# 3. Copy desktop launcher entry
+# 3. Copy desktop launcher entry and application icon
+mkdir -p ~/.local/share/icons
+cp "$SCRIPT_DIR/icon.png" ~/.local/share/icons/g502-control-center.png 2>/dev/null || true
 cp "$SCRIPT_DIR/g502-control-center.desktop" ~/.local/share/applications/
 
 # 4. Set executable permissions
