@@ -9,30 +9,39 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 echo "=== Installing Logitech G502 Linux Control Suite ==="
 
-# 1. Ensure systemd user service directory exists
+# 1. Ensure systemd user service & desktop icon directories exist
 mkdir -p ~/.config/systemd/user
 mkdir -p ~/.local/share/applications
+mkdir -p ~/.local/share/icons/hicolor/256x256/apps
+mkdir -p ~/.local/share/pixmaps
 
 # 2. Copy systemd user service files
 cp "$SCRIPT_DIR/g502-macros.service" ~/.config/systemd/user/
 cp "$SCRIPT_DIR/openrgb-apply.service" ~/.config/systemd/user/
 
-# 3. Copy desktop launcher entry and application icon
-mkdir -p ~/.local/share/icons
-cp "$SCRIPT_DIR/icon.png" ~/.local/share/icons/g502-control-center.png 2>/dev/null || true
+# 3. Copy application icon to standard Freedesktop icon theme paths
+cp "$SCRIPT_DIR/icon.png" ~/.local/share/icons/hicolor/256x256/apps/g502-control-center.png
+cp "$SCRIPT_DIR/icon.png" ~/.local/share/pixmaps/g502-control-center.png
+
+# 4. Copy desktop launcher entry
 cp "$SCRIPT_DIR/g502-control-center.desktop" ~/.local/share/applications/
 
-# 4. Set executable permissions
+# 5. Set executable permissions
 chmod +x "$SCRIPT_DIR/g502_macro_daemon.py"
 chmod +x "$SCRIPT_DIR/g502_gui.py"
 chmod +x ~/.local/share/applications/g502-control-center.desktop
 
-# 5. Reload systemd daemon & enable services
+# 6. Refresh KDE & GTK system icon cache
+gtk-update-icon-cache -f -t ~/.local/share/icons/hicolor 2>/dev/null || true
+kbuildsycoca6 --noincremental 2>/dev/null || kbuildsycoca5 --noincremental 2>/dev/null || true
+touch ~/.local/share/applications/g502-control-center.desktop
+
+# 7. Reload systemd daemon & enable services
 systemctl --user daemon-reload
 systemctl --user enable --now g502-macros.service
 systemctl --user enable openrgb-apply.service 2>/dev/null || true
 
-# 6. Program G502 onboard profiles via ratbagctl
+# 8. Program G502 onboard profiles via ratbagctl
 echo "=== Programming G502 Onboard Mouse Hardware Profiles ==="
 python3 -c "
 import subprocess

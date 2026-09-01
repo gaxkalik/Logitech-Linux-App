@@ -2,7 +2,7 @@
 Name=Logitech G502 Control Center
 Comment=Configure G502 hardware macros, DPI, pointer speed, and RGB lighting
 Exec=/home/bart/.gemini/antigravity/scratch/g502_macros/g502_gui.py
-Icon=/home/bart/.gemini/antigravity/scratch/g502_macros/icon.png
+Icon=g502-control-center
 Terminal=false
 Type=Application
 Categories=Settings;HardwareSettings;Qt;
