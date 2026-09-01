@@ -438,7 +438,7 @@ class G502ControlApp(QMainWindow):
 
         btn_save = QPushButton("Save & Apply All Macro Settings")
         btn_save.setObjectName("accentBtn")
-        btn_save.setHeight(40)
+        btn_save.setFixedHeight(40)
         btn_save.setFont(QFont("Segoe UI", 11, QFont.Weight.Bold))
         btn_save.clicked.connect(self.save_macro_config)
         btn_bar.addWidget(btn_save)
