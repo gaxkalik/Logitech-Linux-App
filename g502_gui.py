@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """
-AGY Logitech G502 Control Center
----------------------------------
+AGY Logitech G502 Control Center & Macro Customization Studio
+--------------------------------------------------------------
 A modern PyQt6 GUI application to configure:
-  - Logitech G502 Macro Daemon status & custom timings
+  - Customizable G502 Macros (Actions, Custom Keys, Hold & Delay Timings)
+  - Live reload via ~/.config/g502_macros/config.json + SIGHUP
   - Hardware DPI & Onboard Profiles via ratbagctl
   - KDE KWin Pointer Acceleration Profile (Flat vs Adaptive) & Pointer Speed live
   - OpenRGB Profile presets (ALL Black)
@@ -23,10 +24,12 @@ from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QLabel, QPushButton, QSlider, QComboBox, QCheckBox, QGroupBox,
     QTabWidget, QTextEdit, QFrame, QSpinBox, QDoubleSpinBox, QStackedWidget,
-    QGraphicsDropShadowEffect, QMessageBox
+    QGraphicsDropShadowEffect, QMessageBox, QScrollArea, QGridLayout
 )
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(levelname)s] %(message)s')
+
+CONFIG_PATH = os.path.expanduser('~/.config/g502_macros/config.json')
 
 QSS_STYLE = """
 QMainWindow {
@@ -216,8 +219,39 @@ QLabel#statusBadgeInactive {
 }
 """
 
+ACTION_TYPES = [
+    ("Left Click Repeat Loop", "LEFT_CLICK_LOOP"),
+    ("Right Click Repeat Loop", "RIGHT_CLICK_LOOP"),
+    ("Middle Click Repeat Loop", "MIDDLE_CLICK_LOOP"),
+    ("Space Key Repeat Loop", "SPACE_LOOP"),
+    ("Win + V Clipboard History", "CLIPBOARD_WIN_V"),
+    ("Custom Key Repeat Loop", "CUSTOM_KEY_LOOP"),
+    ("Disabled / No Macro", "DISABLED"),
+]
+
+CUSTOM_KEYS = [
+    ("Space Bar", "KEY_SPACE"),
+    ("Key E", "KEY_E"),
+    ("Key F", "KEY_F"),
+    ("Key Q", "KEY_Q"),
+    ("Key R", "KEY_R"),
+    ("Key C", "KEY_C"),
+    ("Key V", "KEY_V"),
+    ("Key X", "KEY_X"),
+    ("Key Z", "KEY_Z"),
+    ("Left Shift", "KEY_LEFTSHIFT"),
+    ("Left Ctrl", "KEY_LEFTCTRL"),
+    ("Left Alt", "KEY_LEFTALT"),
+    ("Enter", "KEY_ENTER"),
+    ("Tab", "KEY_TAB"),
+    ("Number 1", "KEY_1"),
+    ("Number 2", "KEY_2"),
+    ("Number 3", "KEY_3"),
+    ("Number 4", "KEY_4"),
+    ("Number 5", "KEY_5"),
+]
+
 def get_g502_ratbag_device():
-    """Helper to query current dynamic ratbagctl device name for G502."""
     try:
         out = subprocess.check_output(['ratbagctl', 'list'], stderr=subprocess.DEVNULL).decode()
         for line in out.splitlines():
@@ -230,11 +264,12 @@ def get_g502_ratbag_device():
 class G502ControlApp(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("AGY Logitech G502 Control Center")
-        self.resize(850, 620)
+        self.setWindowTitle("AGY Logitech G502 Control Center & Macro Studio")
+        self.resize(920, 680)
         self.setStyleSheet(QSS_STYLE)
 
         self.ratbag_dev = get_g502_ratbag_device()
+        self.macro_widgets = {}  # btn_key -> dict of controls
 
         # Main Layout
         main_widget = QWidget()
@@ -253,7 +288,7 @@ class G502ControlApp(QMainWindow):
         title_label = QLabel("Logitech G502 Control Center")
         title_label.setFont(QFont("Segoe UI", 16, QFont.Weight.Bold))
         title_label.setStyleSheet("color: #F8FAFC;")
-        subtitle_label = QLabel("Native Hardware Macros, DPI & Pointer Speed Tuning")
+        subtitle_label = QLabel("Customizable Macro Studio, Hardware DPI & Pointer Speed Tuning")
         subtitle_label.setStyleSheet("color: #64748B; font-size: 12px;")
         title_layout.addWidget(title_label)
         title_layout.addWidget(subtitle_label)
@@ -275,8 +310,8 @@ class G502ControlApp(QMainWindow):
 
         # Tab Navigation
         tabs = QTabWidget()
-        tabs.addTab(self.create_dashboard_tab(), "Dashboard & DPI")
-        tabs.addTab(self.create_macros_tab(), "Macro Tuning")
+        tabs.addTab(self.create_macro_studio_tab(), "Macro Customization Studio")
+        tabs.addTab(self.create_dashboard_tab(), "DPI & Pointer Speed")
         tabs.addTab(self.create_rgb_tab(), "RGB Lighting")
         tabs.addTab(self.create_logs_tab(), "Service Logs")
         main_layout.addWidget(tabs)
@@ -286,6 +321,155 @@ class G502ControlApp(QMainWindow):
         self.timer.timeout.connect(self.update_daemon_status)
         self.timer.start(2000)
         self.update_daemon_status()
+
+    def load_macro_config(self):
+        try:
+            if os.path.exists(CONFIG_PATH):
+                with open(CONFIG_PATH, 'r') as f:
+                    return json.load(f)
+        except Exception as ex:
+            logging.error(f"Error loading config: {ex}")
+        return {
+            "buttons": {
+                "G8": {"name": "G8 (DPI Up)", "action_type": "LEFT_CLICK_LOOP", "hold_ms": 20, "delay_ms": 50, "custom_key": "KEY_SPACE"},
+                "TILT_LEFT": {"name": "Wheel Tilt Left", "action_type": "LEFT_CLICK_LOOP", "hold_ms": 20, "delay_ms": 50, "custom_key": "KEY_SPACE"},
+                "TILT_RIGHT": {"name": "Wheel Tilt Right", "action_type": "RIGHT_CLICK_LOOP", "hold_ms": 20, "delay_ms": 50, "custom_key": "KEY_SPACE"},
+                "G7": {"name": "G7 (DPI Down)", "action_type": "SPACE_LOOP", "hold_ms": 20, "delay_ms": 50, "custom_key": "KEY_SPACE"},
+                "G9": {"name": "G9 (Profile Select)", "action_type": "CLIPBOARD_WIN_V", "hold_ms": 20, "delay_ms": 50, "custom_key": "KEY_SPACE"}
+            }
+        }
+
+    def create_macro_studio_tab(self):
+        tab = QWidget()
+        layout = QVBoxLayout(tab)
+        layout.setSpacing(16)
+        layout.setContentsMargins(12, 12, 12, 12)
+
+        config_data = self.load_macro_config()
+        buttons_cfg = config_data.get("buttons", {})
+
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setStyleSheet("QScrollArea { border: none; background: transparent; }")
+
+        scroll_content = QWidget()
+        scroll_layout = QVBoxLayout(scroll_content)
+        scroll_layout.setSpacing(12)
+
+        buttons_info = [
+            ("G8", "G8 Button (DPI Up)"),
+            ("TILT_LEFT", "Wheel Tilt Left"),
+            ("TILT_RIGHT", "Wheel Tilt Right"),
+            ("G7", "G7 Button (DPI Down)"),
+            ("G9", "G9 Button (Profile Select)")
+        ]
+
+        for btn_key, btn_title in buttons_info:
+            btn_data = buttons_cfg.get(btn_key, {})
+
+            box = QGroupBox(btn_title)
+            box_layout = QGridLayout(box)
+            box_layout.setSpacing(10)
+
+            # Action Selector
+            box_layout.addWidget(QLabel("Macro Action:"), 0, 0)
+            combo_action = QComboBox()
+            for label, code in ACTION_TYPES:
+                combo_action.addItem(label, code)
+
+            # Set current action index
+            current_action = btn_data.get("action_type", "LEFT_CLICK_LOOP")
+            for idx in range(combo_action.count()):
+                if combo_action.itemData(idx) == current_action:
+                    combo_action.setCurrentIndex(idx)
+                    break
+            box_layout.addWidget(combo_action, 0, 1)
+
+            # Custom Key Selector
+            box_layout.addWidget(QLabel("Custom Key:"), 0, 2)
+            combo_key = QComboBox()
+            for label, code in CUSTOM_KEYS:
+                combo_key.addItem(label, code)
+
+            current_key = btn_data.get("custom_key", "KEY_SPACE")
+            for idx in range(combo_key.count()):
+                if combo_key.itemData(idx) == current_key:
+                    combo_key.setCurrentIndex(idx)
+                    break
+            box_layout.addWidget(combo_key, 0, 3)
+
+            # Hold Duration (ms)
+            box_layout.addWidget(QLabel("Hold (ms):"), 1, 0)
+            spin_hold = QSpinBox()
+            spin_hold.setRange(5, 500)
+            spin_hold.setSingleStep(5)
+            spin_hold.setValue(btn_data.get("hold_ms", 20))
+            box_layout.addWidget(spin_hold, 1, 1)
+
+            # Repeat Delay (ms)
+            box_layout.addWidget(QLabel("Delay (ms):"), 1, 2)
+            spin_delay = QSpinBox()
+            spin_delay.setRange(5, 1000)
+            spin_delay.setSingleStep(5)
+            spin_delay.setValue(btn_data.get("delay_ms", 50))
+            box_layout.addWidget(spin_delay, 1, 3)
+
+            # Visibility toggle for custom key box
+            def update_key_vis(idx, c_key=combo_key, c_act=combo_action):
+                c_key.setEnabled(c_act.currentData() == "CUSTOM_KEY_LOOP")
+
+            combo_action.currentIndexChanged.connect(lambda idx, k=combo_key, a=combo_action: k.setEnabled(a.currentData() == "CUSTOM_KEY_LOOP"))
+            combo_key.setEnabled(current_action == "CUSTOM_KEY_LOOP")
+
+            scroll_layout.addWidget(box)
+
+            self.macro_widgets[btn_key] = {
+                "combo_action": combo_action,
+                "combo_key": combo_key,
+                "spin_hold": spin_hold,
+                "spin_delay": spin_delay
+            }
+
+        scroll_area.setWidget(scroll_content)
+        layout.addWidget(scroll_area)
+
+        # Save Button Bar
+        btn_bar = QHBoxLayout()
+
+        btn_save = QPushButton("Save & Apply All Macro Settings")
+        btn_save.setObjectName("accentBtn")
+        btn_save.setHeight(40)
+        btn_save.setFont(QFont("Segoe UI", 11, QFont.Weight.Bold))
+        btn_save.clicked.connect(self.save_macro_config)
+        btn_bar.addWidget(btn_save)
+
+        layout.addLayout(btn_bar)
+        return tab
+
+    def save_macro_config(self):
+        new_cfg = {"buttons": {}}
+        for btn_key, widgets in self.macro_widgets.items():
+            action_code = widgets["combo_action"].currentData()
+            custom_key = widgets["combo_key"].currentData()
+            hold_ms = widgets["spin_hold"].value()
+            delay_ms = widgets["spin_delay"].value()
+
+            new_cfg["buttons"][btn_key] = {
+                "name": btn_key,
+                "action_type": action_code,
+                "hold_ms": hold_ms,
+                "delay_ms": delay_ms,
+                "custom_key": custom_key
+            }
+
+        os.makedirs(os.path.dirname(CONFIG_PATH), exist_ok=True)
+        with open(CONFIG_PATH, 'w') as f:
+            json.dump(new_cfg, f, indent=4)
+
+        # Send SIGHUP signal to macro daemon to reload config dynamically
+        subprocess.run(['pkill', '-HUP', '-f', 'g502_macro_daemon.py'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+        QMessageBox.information(self, "Macro Studio", "Macro settings saved & applied live to G502 daemon!")
 
     def create_dashboard_tab(self):
         tab = QWidget()
@@ -329,7 +513,7 @@ class G502ControlApp(QMainWindow):
 
         layout.addWidget(dpi_group)
 
-        # Pointer Speed & Acceleration Profile Group
+        # Pointer Speed Group
         speed_group = QGroupBox("Desktop Pointer Speed & Acceleration (KDE KWin / libinput)")
         speed_layout = QVBoxLayout(speed_group)
 
@@ -357,56 +541,6 @@ class G502ControlApp(QMainWindow):
         speed_layout.addWidget(self.speed_slider)
 
         layout.addWidget(speed_group)
-        layout.addStretch()
-        return tab
-
-    def create_macros_tab(self):
-        tab = QWidget()
-        layout = QVBoxLayout(tab)
-        layout.setSpacing(16)
-        layout.setContentsMargins(12, 12, 12, 12)
-
-        macros_group = QGroupBox("G502 Button Macro Configuration")
-        macros_layout = QVBoxLayout(macros_group)
-
-        # Table-like layout for macros
-        macros_info = [
-            ("G8 (DPI Up) & Wheel Tilt Left", "Left Click Repeat Loop (20ms hold / 50ms delay)"),
-            ("Wheel Tilt Right", "Right Click Repeat Loop (20ms hold / 50ms delay)"),
-            ("G7 (DPI Down)", "Space Key Repeat Loop (20ms hold / 50ms delay)"),
-            ("G9 (Profile Select)", "Win + V Clipboard History Popup")
-        ]
-
-        for button_name, desc in macros_info:
-            row = QHBoxLayout()
-            lbl_btn = QLabel(button_name)
-            lbl_btn.setFont(QFont("Segoe UI", 10, QFont.Weight.Bold))
-            lbl_btn.setFixedWidth(220)
-            lbl_desc = QLabel(desc)
-            lbl_desc.setStyleSheet("color: #94A3B8;")
-            row.addWidget(lbl_btn)
-            row.addWidget(lbl_desc)
-            row.addStretch()
-            macros_layout.addLayout(row)
-
-        layout.addWidget(macros_group)
-
-        # Interactive Testing Area
-        test_group = QGroupBox("Interactive Macro Testing Box")
-        test_layout = QVBoxLayout(test_group)
-        test_layout.addWidget(QLabel("Click or hold G8 / G7 / G9 in the text box below to test macros live:"))
-
-        self.test_input = QTextEdit()
-        self.test_input.setPlaceholderText("Click here and press G8 (Left Click Loop), G7 (Space Loop), or G9 (Clipboard)...")
-        self.test_input.setFixedHeight(120)
-        test_layout.addWidget(self.test_input)
-
-        btn_clear = QPushButton("Clear Test Box")
-        btn_clear.setFixedWidth(140)
-        btn_clear.clicked.connect(lambda: self.test_input.clear())
-        test_layout.addWidget(btn_clear)
-
-        layout.addWidget(test_group)
         layout.addStretch()
         return tab
 
@@ -506,7 +640,6 @@ class G502ControlApp(QMainWindow):
         subprocess.run(['kwriteconfig6', '--file', os.path.expanduser('~/.config/kcminputrc'), '--group', 'Libinput', '--group', '1133', '--group', '49970', '--group', 'Logitech Gaming Mouse G502', '--key', 'PointerAccelerationProfile', str(profile_num)])
         subprocess.run(['kwriteconfig6', '--file', os.path.expanduser('~/.config/kcminputrc'), '--group', 'Mouse', '--key', 'PointerAccelerationProfile', str(profile_num)])
 
-        # Update KWin live
         is_flat = (profile_num == 2)
         subprocess.run(['python3', '-c', f"import subprocess; [subprocess.run(['busctl', '--user', 'set-property', 'org.kde.KWin', p, 'org.kde.KWin.InputDevice', 'pointerAccelerationProfileFlat', 'b', '{str(is_flat).lower()}']) for p in ['/org/kde/KWin/InputDevice/event8']]"], stdout=subprocess.DEVNULL)
 
@@ -517,7 +650,6 @@ class G502ControlApp(QMainWindow):
         subprocess.run(['kwriteconfig6', '--file', os.path.expanduser('~/.config/kcminputrc'), '--group', 'Libinput', '--group', '1133', '--group', '49970', '--group', 'Logitech Gaming Mouse G502', '--key', 'PointerAcceleration', f"{speed_float:.3f}"])
         subprocess.run(['kwriteconfig6', '--file', os.path.expanduser('~/.config/kcminputrc'), '--group', 'Mouse', '--key', 'PointerAcceleration', f"{speed_float:.3f}"])
 
-        # Update KWin live
         subprocess.run(['python3', '-c', f"import subprocess; [subprocess.run(['busctl', '--user', 'set-property', 'org.kde.KWin', p, 'org.kde.KWin.InputDevice', 'pointerAcceleration', 'd', '{speed_float}']) for p in ['/org/kde/KWin/InputDevice/event8']]"], stdout=subprocess.DEVNULL)
 
     def apply_all_black_rgb(self):
