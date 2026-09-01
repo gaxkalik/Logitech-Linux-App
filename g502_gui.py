@@ -3,6 +3,7 @@
 AGY Logitech & Universal Gaming Mouse Control Suite
 ---------------------------------------------------
 A modern PyQt6 GUI application powered by libratbagd / piper integration to configure:
+  - Dynamic button discovery per connected mouse device via ratbagctl info
   - Universal multi-mouse discovery (Logitech G502, Razer, SteelSeries, Roccat, Corsair, etc.)
   - Device Selector dropdown to switch between connected gaming mice
   - Customizable Macros (Actions, Custom Keys, Hold & Delay Timings)
@@ -286,6 +287,30 @@ def get_all_ratbag_mice():
         pass
     return mice
 
+def get_mouse_button_info(dev_id):
+    """Dynamically queries physical button count and assignments for any mouse via ratbagctl."""
+    buttons = []
+    if not dev_id:
+        return buttons
+    try:
+        out = subprocess.check_output(['ratbagctl', dev_id, 'info'], stderr=subprocess.DEVNULL).decode()
+        in_profile0 = False
+        for line in out.splitlines():
+            line_str = line.strip()
+            if 'Profile 0:' in line_str:
+                in_profile0 = True
+            elif line_str.startswith('Profile ') and 'Profile 0:' not in line_str:
+                in_profile0 = False
+            
+            if in_profile0 and line_str.startswith('Button:'):
+                parts = line_str.split('is mapped to')
+                btn_idx = parts[0].replace('Button:', '').strip()
+                action = parts[1].strip().strip("'") if len(parts) > 1 else 'unknown'
+                buttons.append({'idx': btn_idx, 'action': action})
+    except Exception:
+        pass
+    return buttons
+
 ICON_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'icon.png')
 
 class G502ControlApp(QMainWindow):
@@ -317,7 +342,7 @@ class G502ControlApp(QMainWindow):
         title_label = QLabel("Universal Gaming Mouse Control Center")
         title_label.setFont(QFont("Segoe UI", 16, QFont.Weight.Bold))
         title_label.setStyleSheet("color: #F8FAFC;")
-        subtitle_label = QLabel("Multi-Mouse Hardware Tuning, Piper Engine & Dynamic Macro Studio")
+        subtitle_label = QLabel("Dynamic Button Discovery, Hardware DPI Tuning & Piper Engine")
         subtitle_label.setStyleSheet("color: #64748B; font-size: 12px;")
         title_layout.addWidget(title_label)
         title_layout.addWidget(subtitle_label)
@@ -333,7 +358,7 @@ class G502ControlApp(QMainWindow):
         self.combo_device.setMinimumWidth(220)
         if self.mice_list:
             for m in self.mice_list:
-                self.combo_device.addItem(f"🖱️ {m['name']}", m['id'])
+                self.combo_device.addItem(f"🖱️ {m['name']} ({m['buttons']} Buttons)", m['id'])
         else:
             self.combo_device.addItem("No libratbag device found", "")
         self.combo_device.currentIndexChanged.connect(self.on_mouse_device_changed)
@@ -375,6 +400,8 @@ class G502ControlApp(QMainWindow):
         dev_id = self.get_selected_ratbag_dev_id()
         if dev_id:
             logging.info(f"Switched active mouse device to: {dev_id}")
+            buttons = get_mouse_button_info(dev_id)
+            logging.info(f"Discovered {len(buttons)} physical buttons on mouse {dev_id}")
 
     def load_macro_config(self):
         try:
@@ -404,11 +431,11 @@ class G502ControlApp(QMainWindow):
         guide.setObjectName("guideBox")
         guide_layout = QVBoxLayout(guide)
         guide_layout.setContentsMargins(12, 10, 12, 10)
-        guide_title = QLabel("💡 Universal Macro Studio & Piper Engine Guide:")
+        guide_title = QLabel("💡 Dynamic Mouse Button Discovery & Macro Studio Guide:")
         guide_title.setFont(QFont("Segoe UI", 11, QFont.Weight.Bold))
         guide_title.setStyleSheet("color: #38BDF8;")
         guide_text = QLabel(
-            "• Multi-Mouse Engine: Works seamlessly across Logitech, Razer, SteelSeries, Roccat, and Corsair gaming mice.\n"
+            "• Dynamic Button Query: libratbagd automatically queries USB/HID hardware reports to identify all physical buttons on your active mouse.\n"
             "• Macro Action: Selects the action performed when holding any extra mouse button.\n"
             "• Hold (ms): Duration in milliseconds that the button/key is held down during each loop cycle (default: 20ms).\n"
             "• Delay (ms): Pause duration in milliseconds between repeated clicks/keypresses (default: 50ms)."
