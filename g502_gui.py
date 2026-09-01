@@ -386,7 +386,8 @@ class G502ControlApp(QMainWindow):
             box_layout.addWidget(combo_action, 0, 1)
 
             # Custom Key Selector
-            box_layout.addWidget(QLabel("Custom Key:"), 0, 2)
+            lbl_custom_key = QLabel("Custom Key:")
+            box_layout.addWidget(lbl_custom_key, 0, 2)
             combo_key = QComboBox()
             for label, code in CUSTOM_KEYS:
                 combo_key.addItem(label, code)
@@ -415,11 +416,13 @@ class G502ControlApp(QMainWindow):
             box_layout.addWidget(spin_delay, 1, 3)
 
             # Visibility toggle for custom key box
-            def update_key_vis(idx, c_key=combo_key, c_act=combo_action):
-                c_key.setEnabled(c_act.currentData() == "CUSTOM_KEY_LOOP")
+            def update_key_vis(idx=0, c_lbl=lbl_custom_key, c_key=combo_key, c_act=combo_action):
+                is_custom = (c_act.currentData() == "CUSTOM_KEY_LOOP")
+                c_lbl.setVisible(is_custom)
+                c_key.setVisible(is_custom)
 
-            combo_action.currentIndexChanged.connect(lambda idx, k=combo_key, a=combo_action: k.setEnabled(a.currentData() == "CUSTOM_KEY_LOOP"))
-            combo_key.setEnabled(current_action == "CUSTOM_KEY_LOOP")
+            combo_action.currentIndexChanged.connect(update_key_vis)
+            update_key_vis()
 
             scroll_layout.addWidget(box)
 
