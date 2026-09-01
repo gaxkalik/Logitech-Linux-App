@@ -1,25 +1,25 @@
 # 🖱️ Logitech G502 Linux Hardware Macro & Control Suite
 
-A zero-lag, native Linux macro daemon, hardware DPI tuner, and PyQt6 GUI control panel for the **Logitech Gaming Mouse G502**.
+A zero-lag, native Linux macro daemon, hardware DPI tuner, and PyQt6 GUI Control Center & Macro Customization Studio for the **Logitech Gaming Mouse G502**.
 
 ---
 
 ## ✨ Features
 
-- **Zero-Lag Passive Monitoring**: Passively reads `/dev/input/event*` hardware events without calling `dev.grab()`. Cursor movement (`REL_X`, `REL_Y`) and primary clicks remain 100% direct-to-kernel at 1000Hz with zero input latency.
-- **Hardware Button Macros**:
-  - **G8 (DPI Up) & Wheel Tilt Left**: Left Click down (20ms) \(\rightarrow\) Left Click up (50ms) repeat loop while held (stops instantly on release).
-  - **Wheel Tilt Right**: Right Click down (20ms) \(\rightarrow\) Right Click up (50ms) repeat loop while held (stops instantly on release).
-  - **G7 (DPI Down)**: Space Key down (20ms) \(\rightarrow\) Space Key up (50ms) repeat loop while held (stops instantly on release).
-  - **G9 (Profile Select)**: Opens Clipboard History (`Win + V`) in a non-blocking background thread.
-- **PyQt6 GUI Control Center (`g502_gui.py`)**:
-  - Live hardware DPI slider & presets (400 - 4000+ DPI, default 1200 DPI).
-  - Live KDE KWin pointer acceleration toggle (**Flat 1:1 Raw Linear** vs **Adaptive**).
-  - Live pointer speed slider (`0.000` to `1.000`).
-  - One-click OpenRGB profile preset loading (`ALL Black`).
-  - Integrated live `journalctl` service log viewer.
-  - Interactive live macro testing box.
-- **Systemd Autostart**: Service unit files to run headlessly at boot.
+- **⚡ Zero-Lag Passive Monitoring**: Passively reads hardware event nodes (`/dev/input/event*`) without calling `dev.grab()`. Cursor movement (`REL_X`, `REL_Y` at 1000Hz) and primary clicks pass directly to the kernel with **0.00ms input latency** in games.
+- **🎨 PyQt6 GUI Control Center & Macro Studio (`g502_gui.py`)**:
+  - **Macro Customization Studio**: Customize button functions (**G7**, **G8**, **G9**, **Wheel Tilt Left**, **Wheel Tilt Right**), hold duration (ms), and repeat delay (ms) live.
+  - **Action Selectors**: Left Click Loop, Right Click Loop, Middle Click Loop, Space Key Loop, Win + V Clipboard History, Custom Key Loop, or Disabled.
+  - **Custom Key Mapping**: Map any keyboard key (`E`, `F`, `Q`, `R`, `Shift`, `Ctrl`, `Alt`, `Enter`, `Tab`, numbers, etc.) to repeat when held.
+  - **Auto-Apply on Save**: Clicking *Save & Apply All Macro Settings* automatically restarts `g502-macros.service` so changes take effect instantly.
+  - **Field Guide & Tooltips**: Built-in visual guides and hover tooltips explaining what each setting does.
+  - **Hardware DPI Controls**: Live hardware sensor resolution adjustments (400 - 4000+ DPI, default 1200 DPI) synced across all onboard mouse memory profiles (`ratbagctl`).
+  - **Pointer Acceleration Profile**: Toggle between **Flat (1:1 Raw Linear)** and **Adaptive (Windows-style Curve)**.
+  - **Pointer Speed Slider**: Live KWin DBus + `kcminputrc` pointer acceleration scaling (`0.000` to `1.000`).
+  - **OpenRGB Control**: One-click button to re-apply the **`ALL Black`** OpenRGB preset.
+  - **Integrated Log Viewer**: Live `journalctl` service log output built directly into the app.
+- **⚙️ Dynamic JSON Config (`~/.config/g502_macros/config.json`)**: Persistent configuration loaded at startup and reloaded live.
+- **🖥️ Systemd Autostart**: User service unit files to run headlessly at boot.
 
 ---
 
@@ -27,22 +27,22 @@ A zero-lag, native Linux macro daemon, hardware DPI tuner, and PyQt6 GUI control
 
 ```text
 ├── g502_macro_daemon.py       # Zero-lag passive evdev + uinput macro daemon
-├── g502_gui.py                # PyQt6 Control Center desktop application
+├── g502_gui.py                # PyQt6 Control Center & Macro Customization Studio desktop app
 ├── install.sh                 # One-click installation and mouse profile setup script
 ├── g502-macros.service        # Systemd user service unit for macro daemon
 ├── openrgb-apply.service      # Systemd user service unit for OpenRGB preset
 ├── g502-control-center.desktop # Desktop launcher for application menu
-└── README.md                  # Documentation
+└── README.md                  # Comprehensive documentation
 ```
 
 ---
 
-## 🚀 Installation & Usage
+## 🚀 Quick Start & Installation
 
 1. **Clone the repository**:
    ```bash
-   git clone <repo-url>
-   cd g502_macros
+   git clone git@github.com:gaxkalik/Logitech-G502-Linux-App.git
+   cd Logitech-G502-Linux-App
    ```
 
 2. **Run the installer**:
@@ -67,3 +67,4 @@ A zero-lag, native Linux macro daemon, hardware DPI tuner, and PyQt6 GUI control
 - `PyQt6`
 - `libratbag` / `ratbagctl`
 - `systemd` (user session)
+- `openrgb` (optional)
