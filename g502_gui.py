@@ -1,17 +1,16 @@
 #!/usr/bin/env python3
 """
-AGY Logitech & Universal Gaming Mouse Control Suite
----------------------------------------------------
-A modern PyQt6 GUI application powered by libratbagd / piper integration to configure:
-  - Dynamic button discovery per connected mouse device via ratbagctl info
+AGY Piper-Inspired Universal Gaming Mouse Control Suite
+-------------------------------------------------------
+A modern PyQt6 GUI application featuring Piper-style main page UI layout:
+  - Piper-inspired 2-Column Button Card Grid with visual button badges
+  - Dynamic button discovery per mouse device via ratbagctl info
   - Universal multi-mouse discovery (Logitech G502, Razer, SteelSeries, Roccat, Corsair, etc.)
   - Device Selector dropdown to switch between connected gaming mice
   - Customizable Macros (Actions, Custom Keys, Hold & Delay Timings)
   - Automatic systemd service restart on save
-  - Comprehensive field explanations and tooltips
   - Hardware DPI & Onboard Profiles via ratbagctl
   - KDE KWin Pointer Acceleration Profile (Flat vs Adaptive) & Pointer Speed live
-  - OpenRGB Profile presets (ALL Black)
 """
 
 import sys
@@ -47,7 +46,7 @@ QWidget {
 
 QTabWidget::pane {
     border: 1px solid #1E293B;
-    background-color: #161922;
+    background-color: #141720;
     border-radius: 8px;
     top: -1px;
 }
@@ -64,7 +63,7 @@ QTabBar::tab {
 }
 
 QTabBar::tab:selected {
-    background-color: #161922;
+    background-color: #141720;
     color: #38BDF8;
     border-bottom: 2px solid #38BDF8;
 }
@@ -76,25 +75,25 @@ QTabBar::tab:hover {
 
 QGroupBox {
     font-weight: bold;
-    font-size: 14px;
-    border: 1px solid #1E293B;
+    font-size: 13px;
+    border: 1px solid #232A3B;
     border-radius: 8px;
-    margin-top: 12px;
-    padding-top: 16px;
-    background-color: #161922;
+    margin-top: 8px;
+    padding-top: 14px;
+    background-color: #181C28;
 }
 
 QGroupBox::title {
     subcontrol-origin: margin;
     subcontrol-position: top left;
-    left: 12px;
+    left: 10px;
     padding: 0 6px;
     color: #38BDF8;
 }
 
 QFrame#guideBox {
-    background-color: #091322;
-    border: 1px solid #1E3A8A;
+    background-color: #0B132B;
+    border: 1px solid #1C2D5A;
     border-radius: 8px;
     padding: 10px;
 }
@@ -169,9 +168,9 @@ QComboBox {
     background-color: #1E293B;
     border: 1px solid #334155;
     border-radius: 6px;
-    padding: 6px 12px;
+    padding: 5px 10px;
     color: #F8FAFC;
-    font-size: 13px;
+    font-size: 12px;
 }
 
 QComboBox:hover {
@@ -190,9 +189,9 @@ QSpinBox, QDoubleSpinBox {
     background-color: #1E293B;
     border: 1px solid #334155;
     border-radius: 6px;
-    padding: 6px 10px;
+    padding: 5px 8px;
     color: #F8FAFC;
-    font-size: 13px;
+    font-size: 12px;
 }
 
 QSpinBox:hover, QDoubleSpinBox:hover {
@@ -227,6 +226,12 @@ QLabel#statusBadgeInactive {
     font-weight: bold;
     font-size: 12px;
 }
+
+QLabel#badgeG8 { background-color: #0369A1; color: #7DD3FC; border-radius: 4px; padding: 2px 6px; font-weight: bold; font-size: 11px; }
+QLabel#badgeTiltL { background-color: #4338CA; color: #C7D2FE; border-radius: 4px; padding: 2px 6px; font-weight: bold; font-size: 11px; }
+QLabel#badgeTiltR { background-color: #6B21A8; color: #F0ABFC; border-radius: 4px; padding: 2px 6px; font-weight: bold; font-size: 11px; }
+QLabel#badgeG7 { background-color: #047857; color: #A7F3D0; border-radius: 4px; padding: 2px 6px; font-weight: bold; font-size: 11px; }
+QLabel#badgeG9 { background-color: #B45309; color: #FDE68A; border-radius: 4px; padding: 2px 6px; font-weight: bold; font-size: 11px; }
 """
 
 ACTION_TYPES = [
@@ -262,7 +267,6 @@ CUSTOM_KEYS = [
 ]
 
 def get_all_ratbag_mice():
-    """Returns a list of dicts for all connected gaming mice via libratbagd/ratbagctl."""
     mice = []
     try:
         out = subprocess.check_output(['ratbagctl', 'list'], stderr=subprocess.DEVNULL).decode()
@@ -272,7 +276,7 @@ def get_all_ratbag_mice():
                 try:
                     info = subprocess.check_output(['ratbagctl', dev_id, 'info'], stderr=subprocess.DEVNULL).decode()
                     if 'Number of Buttons: 0' in info:
-                        continue  # Skip headsets
+                        continue
                     buttons = 0
                     profiles = 1
                     for il in info.splitlines():
@@ -288,7 +292,6 @@ def get_all_ratbag_mice():
     return mice
 
 def get_mouse_button_info(dev_id):
-    """Dynamically queries physical button count and assignments for any mouse via ratbagctl."""
     buttons = []
     if not dev_id:
         return buttons
@@ -316,25 +319,25 @@ ICON_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'icon.png')
 class G502ControlApp(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("AGY Universal Gaming Mouse Control Suite (libratbag / Piper Enabled)")
+        self.setWindowTitle("AGY Universal Gaming Mouse Control Suite (Piper UI Engine)")
         if os.path.exists(ICON_PATH):
             self.setWindowIcon(QIcon(ICON_PATH))
-        self.resize(960, 740)
+        self.resize(980, 750)
         self.setStyleSheet(QSS_STYLE)
 
         self.mice_list = get_all_ratbag_mice()
-        self.macro_widgets = {}  # btn_key -> dict of controls
+        self.macro_widgets = {}
 
         # Main Layout
         main_widget = QWidget()
         self.setCentralWidget(main_widget)
         main_layout = QVBoxLayout(main_widget)
         main_layout.setContentsMargins(16, 16, 16, 16)
-        main_layout.setSpacing(16)
+        main_layout.setSpacing(14)
 
-        # Header Bar with Multi-Mouse Selector
+        # Piper Header Bar
         header = QFrame()
-        header.setStyleSheet("background-color: #161922; border-radius: 10px; border: 1px solid #1E293B;")
+        header.setStyleSheet("background-color: #141720; border-radius: 10px; border: 1px solid #1E293B;")
         header_layout = QHBoxLayout(header)
         header_layout.setContentsMargins(16, 12, 16, 12)
 
@@ -342,7 +345,7 @@ class G502ControlApp(QMainWindow):
         title_label = QLabel("Universal Gaming Mouse Control Center")
         title_label.setFont(QFont("Segoe UI", 16, QFont.Weight.Bold))
         title_label.setStyleSheet("color: #F8FAFC;")
-        subtitle_label = QLabel("Dynamic Button Discovery, Hardware DPI Tuning & Piper Engine")
+        subtitle_label = QLabel("Piper-Inspired Main Page UI, Multi-Mouse Hardware Tuning & Macro Studio")
         subtitle_label.setStyleSheet("color: #64748B; font-size: 12px;")
         title_layout.addWidget(title_label)
         title_layout.addWidget(subtitle_label)
@@ -355,7 +358,7 @@ class G502ControlApp(QMainWindow):
         dev_title = QLabel("Active Gaming Mouse:")
         dev_title.setStyleSheet("color: #38BDF8; font-weight: bold; font-size: 11px;")
         self.combo_device = QComboBox()
-        self.combo_device.setMinimumWidth(220)
+        self.combo_device.setMinimumWidth(230)
         if self.mice_list:
             for m in self.mice_list:
                 self.combo_device.addItem(f"🖱️ {m['name']} ({m['buttons']} Buttons)", m['id'])
@@ -381,7 +384,7 @@ class G502ControlApp(QMainWindow):
 
         # Tab Navigation
         tabs = QTabWidget()
-        tabs.addTab(self.create_macro_studio_tab(), "Macro Customization Studio")
+        tabs.addTab(self.create_macro_studio_tab(), "Piper Macro Studio")
         tabs.addTab(self.create_dashboard_tab(), "DPI & Pointer Speed")
         tabs.addTab(self.create_rgb_tab(), "RGB Lighting")
         tabs.addTab(self.create_logs_tab(), "Service Logs")
@@ -423,22 +426,19 @@ class G502ControlApp(QMainWindow):
     def create_macro_studio_tab(self):
         tab = QWidget()
         layout = QVBoxLayout(tab)
-        layout.setSpacing(12)
+        layout.setSpacing(10)
         layout.setContentsMargins(12, 12, 12, 12)
 
-        # Field Guide Banner
+        # Piper Header Banner
         guide = QFrame()
         guide.setObjectName("guideBox")
         guide_layout = QVBoxLayout(guide)
-        guide_layout.setContentsMargins(12, 10, 12, 10)
-        guide_title = QLabel("💡 Dynamic Mouse Button Discovery & Macro Studio Guide:")
+        guide_layout.setContentsMargins(12, 8, 12, 8)
+        guide_title = QLabel("⚡ Piper-Inspired Macro Studio & Button Mapping Grid:")
         guide_title.setFont(QFont("Segoe UI", 11, QFont.Weight.Bold))
         guide_title.setStyleSheet("color: #38BDF8;")
         guide_text = QLabel(
-            "• Dynamic Button Query: libratbagd automatically queries USB/HID hardware reports to identify all physical buttons on your active mouse.\n"
-            "• Macro Action: Selects the action performed when holding any extra mouse button.\n"
-            "• Hold (ms): Duration in milliseconds that the button/key is held down during each loop cycle (default: 20ms).\n"
-            "• Delay (ms): Pause duration in milliseconds between repeated clicks/keypresses (default: 50ms)."
+            "Configure secondary buttons and wheel tilts with custom macro actions, hold durations, and repeat delays."
         )
         guide_text.setStyleSheet("color: #94A3B8; font-size: 12px;")
         guide_layout.addWidget(guide_title)
@@ -453,26 +453,40 @@ class G502ControlApp(QMainWindow):
         scroll_area.setStyleSheet("QScrollArea { border: none; background: transparent; }")
 
         scroll_content = QWidget()
-        scroll_layout = QVBoxLayout(scroll_content)
-        scroll_layout.setSpacing(10)
+        # Piper-style 2-Column Responsive Grid Layout!
+        scroll_grid = QGridLayout(scroll_content)
+        scroll_grid.setSpacing(12)
 
         buttons_info = [
-            ("G8", "G8 / Extra Button 1 (DPI Up / Top Extra)"),
-            ("TILT_LEFT", "Wheel Tilt Left / Side Button 1"),
-            ("TILT_RIGHT", "Wheel Tilt Right / Side Button 2"),
-            ("G7", "G7 / Extra Button 2 (DPI Down / Thumb Button)"),
-            ("G9", "G9 / Extra Button 3 (Profile / Special)")
+            ("G8", "G8 (DPI Up / Top Extra)", "badgeG8", "[ G8 ]", 0, 0),
+            ("TILT_LEFT", "Wheel Tilt Left", "badgeTiltL", "[ TILT ◄ ]", 0, 1),
+            ("TILT_RIGHT", "Wheel Tilt Right", "badgeTiltR", "[ TILT ► ]", 1, 0),
+            ("G7", "G7 (DPI Down / Thumb)", "badgeG7", "[ G7 ]", 1, 1),
+            ("G9", "G9 (Profile / Special)", "badgeG9", "[ G9 ]", 2, 0)
         ]
 
-        for btn_key, btn_title in buttons_info:
+        for btn_key, btn_title, badge_id, badge_text, row, col in buttons_info:
             btn_data = buttons_cfg.get(btn_key, {})
 
-            box = QGroupBox(btn_title)
-            box_layout = QGridLayout(box)
-            box_layout.setSpacing(10)
+            box = QGroupBox()
+            box_layout = QVBoxLayout(box)
+            box_layout.setSpacing(8)
 
-            # Action Selector
-            box_layout.addWidget(QLabel("Macro Action:"), 0, 0)
+            # Card Header Bar with Badge
+            card_head = QHBoxLayout()
+            badge_lbl = QLabel(badge_text)
+            badge_lbl.setObjectName(badge_id)
+            title_lbl = QLabel(btn_title)
+            title_lbl.setFont(QFont("Segoe UI", 10, QFont.Weight.Bold))
+            title_lbl.setStyleSheet("color: #F8FAFC;")
+            card_head.addWidget(badge_lbl)
+            card_head.addWidget(title_lbl)
+            card_head.addStretch()
+            box_layout.addLayout(card_head)
+
+            # Action Selector Row
+            act_layout = QHBoxLayout()
+            act_layout.addWidget(QLabel("Macro Action:"))
             combo_action = QComboBox()
             combo_action.setToolTip("Select the action performed when holding this button.")
             for label, code in ACTION_TYPES:
@@ -483,11 +497,12 @@ class G502ControlApp(QMainWindow):
                 if combo_action.itemData(idx) == current_action:
                     combo_action.setCurrentIndex(idx)
                     break
-            box_layout.addWidget(combo_action, 0, 1)
+            act_layout.addWidget(combo_action)
+            box_layout.addLayout(act_layout)
 
-            # Custom Key Selector
+            # Custom Key Selector Row
+            key_layout = QHBoxLayout()
             lbl_custom_key = QLabel("Custom Key:")
-            box_layout.addWidget(lbl_custom_key, 0, 2)
             combo_key = QComboBox()
             combo_key.setToolTip("Pick the specific keyboard key to repeat.")
             for label, code in CUSTOM_KEYS:
@@ -498,27 +513,32 @@ class G502ControlApp(QMainWindow):
                 if combo_key.itemData(idx) == current_key:
                     combo_key.setCurrentIndex(idx)
                     break
-            box_layout.addWidget(combo_key, 0, 3)
+            key_layout.addWidget(lbl_custom_key)
+            key_layout.addWidget(combo_key)
+            box_layout.addLayout(key_layout)
 
-            # Hold Duration (ms)
-            box_layout.addWidget(QLabel("Hold (ms):"), 1, 0)
+            # Timings Row (Hold ms + Delay ms)
+            timing_layout = QHBoxLayout()
+            timing_layout.addWidget(QLabel("Hold:"))
             spin_hold = QSpinBox()
             spin_hold.setToolTip("Milliseconds key/click is held down per cycle.")
             spin_hold.setRange(5, 500)
             spin_hold.setSingleStep(5)
             spin_hold.setValue(btn_data.get("hold_ms", 20))
-            box_layout.addWidget(spin_hold, 1, 1)
+            timing_layout.addWidget(spin_hold)
 
-            # Repeat Delay (ms)
-            box_layout.addWidget(QLabel("Delay (ms):"), 1, 2)
+            timing_layout.addWidget(QLabel("ms  Delay:"))
             spin_delay = QSpinBox()
             spin_delay.setToolTip("Milliseconds pause between repeat clicks/presses.")
             spin_delay.setRange(5, 1000)
             spin_delay.setSingleStep(5)
             spin_delay.setValue(btn_data.get("delay_ms", 50))
-            box_layout.addWidget(spin_delay, 1, 3)
+            timing_layout.addWidget(spin_delay)
+            timing_layout.addWidget(QLabel("ms"))
 
-            # Visibility toggle for custom key box
+            box_layout.addLayout(timing_layout)
+
+            # Visibility toggle for custom key row
             def update_key_vis(idx=0, c_lbl=lbl_custom_key, c_key=combo_key, c_act=combo_action):
                 is_custom = (c_act.currentData() == "CUSTOM_KEY_LOOP")
                 c_lbl.setVisible(is_custom)
@@ -527,7 +547,7 @@ class G502ControlApp(QMainWindow):
             combo_action.currentIndexChanged.connect(update_key_vis)
             update_key_vis()
 
-            scroll_layout.addWidget(box)
+            scroll_grid.addWidget(box, row, col)
 
             self.macro_widgets[btn_key] = {
                 "combo_action": combo_action,
