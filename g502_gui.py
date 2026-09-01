@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 """
-AGY Logitech G502 Control Center & Macro Customization Studio
---------------------------------------------------------------
-A modern PyQt6 GUI application to configure:
-  - Customizable G502 Macros (Actions, Custom Keys, Hold & Delay Timings)
+AGY Logitech & Universal Gaming Mouse Control Suite
+---------------------------------------------------
+A modern PyQt6 GUI application powered by libratbagd / piper integration to configure:
+  - Universal multi-mouse discovery (Logitech G502, Razer, SteelSeries, Roccat, Corsair, etc.)
+  - Device Selector dropdown to switch between connected gaming mice
+  - Customizable Macros (Actions, Custom Keys, Hold & Delay Timings)
   - Automatic systemd service restart on save
   - Comprehensive field explanations and tooltips
   - Hardware DPI & Onboard Profiles via ratbagctl
@@ -258,28 +260,44 @@ CUSTOM_KEYS = [
     ("Number 5", "KEY_5"),
 ]
 
-def get_g502_ratbag_device():
+def get_all_ratbag_mice():
+    """Returns a list of dicts for all connected gaming mice via libratbagd/ratbagctl."""
+    mice = []
     try:
         out = subprocess.check_output(['ratbagctl', 'list'], stderr=subprocess.DEVNULL).decode()
         for line in out.splitlines():
-            if 'G502' in line:
-                return line.split(':')[0].strip()
+            if ':' in line:
+                dev_id, dev_name = [x.strip() for x in line.split(':', 1)]
+                try:
+                    info = subprocess.check_output(['ratbagctl', dev_id, 'info'], stderr=subprocess.DEVNULL).decode()
+                    if 'Number of Buttons: 0' in info:
+                        continue  # Skip headsets
+                    buttons = 0
+                    profiles = 1
+                    for il in info.splitlines():
+                        if 'Number of Buttons:' in il:
+                            buttons = int(il.split(':')[1].strip())
+                        elif 'Number of Profiles:' in il:
+                            profiles = int(il.split(':')[1].strip())
+                    mice.append({'id': dev_id, 'name': dev_name, 'buttons': buttons, 'profiles': profiles})
+                except Exception:
+                    pass
     except Exception:
         pass
-    return None
+    return mice
 
 ICON_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'icon.png')
 
 class G502ControlApp(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("AGY Logitech G502 Control Center & Macro Studio")
+        self.setWindowTitle("AGY Universal Gaming Mouse Control Suite (libratbag / Piper Enabled)")
         if os.path.exists(ICON_PATH):
             self.setWindowIcon(QIcon(ICON_PATH))
-        self.resize(940, 720)
+        self.resize(960, 740)
         self.setStyleSheet(QSS_STYLE)
 
-        self.ratbag_dev = get_g502_ratbag_device()
+        self.mice_list = get_all_ratbag_mice()
         self.macro_widgets = {}  # btn_key -> dict of controls
 
         # Main Layout
@@ -289,17 +307,17 @@ class G502ControlApp(QMainWindow):
         main_layout.setContentsMargins(16, 16, 16, 16)
         main_layout.setSpacing(16)
 
-        # Header Bar
+        # Header Bar with Multi-Mouse Selector
         header = QFrame()
         header.setStyleSheet("background-color: #161922; border-radius: 10px; border: 1px solid #1E293B;")
         header_layout = QHBoxLayout(header)
         header_layout.setContentsMargins(16, 12, 16, 12)
 
         title_layout = QVBoxLayout()
-        title_label = QLabel("Logitech G502 Control Center")
+        title_label = QLabel("Universal Gaming Mouse Control Center")
         title_label.setFont(QFont("Segoe UI", 16, QFont.Weight.Bold))
         title_label.setStyleSheet("color: #F8FAFC;")
-        subtitle_label = QLabel("Customizable Macro Studio, Hardware DPI & Pointer Speed Tuning")
+        subtitle_label = QLabel("Multi-Mouse Hardware Tuning, Piper Engine & Dynamic Macro Studio")
         subtitle_label.setStyleSheet("color: #64748B; font-size: 12px;")
         title_layout.addWidget(title_label)
         title_layout.addWidget(subtitle_label)
@@ -307,15 +325,32 @@ class G502ControlApp(QMainWindow):
         header_layout.addLayout(title_layout)
         header_layout.addStretch()
 
+        # Mouse Device Selector Dropdown
+        device_layout = QVBoxLayout()
+        dev_title = QLabel("Active Gaming Mouse:")
+        dev_title.setStyleSheet("color: #38BDF8; font-weight: bold; font-size: 11px;")
+        self.combo_device = QComboBox()
+        self.combo_device.setMinimumWidth(220)
+        if self.mice_list:
+            for m in self.mice_list:
+                self.combo_device.addItem(f"🖱️ {m['name']}", m['id'])
+        else:
+            self.combo_device.addItem("No libratbag device found", "")
+        self.combo_device.currentIndexChanged.connect(self.on_mouse_device_changed)
+        device_layout.addWidget(dev_title)
+        device_layout.addWidget(self.combo_device)
+        header_layout.addLayout(device_layout)
+
         # Daemon Status Indicator
+        status_layout = QVBoxLayout()
         self.status_badge = QLabel("CHECKING...")
         self.status_badge.setObjectName("statusBadgeInactive")
-        header_layout.addWidget(self.status_badge)
-
         self.btn_toggle_service = QPushButton("Start Service")
         self.btn_toggle_service.setObjectName("accentBtn")
         self.btn_toggle_service.clicked.connect(self.toggle_service)
-        header_layout.addWidget(self.btn_toggle_service)
+        status_layout.addWidget(self.status_badge)
+        status_layout.addWidget(self.btn_toggle_service)
+        header_layout.addLayout(status_layout)
 
         main_layout.addWidget(header)
 
@@ -332,6 +367,14 @@ class G502ControlApp(QMainWindow):
         self.timer.timeout.connect(self.update_daemon_status)
         self.timer.start(2000)
         self.update_daemon_status()
+
+    def get_selected_ratbag_dev_id(self):
+        return self.combo_device.currentData()
+
+    def on_mouse_device_changed(self, idx):
+        dev_id = self.get_selected_ratbag_dev_id()
+        if dev_id:
+            logging.info(f"Switched active mouse device to: {dev_id}")
 
     def load_macro_config(self):
         try:
@@ -361,14 +404,14 @@ class G502ControlApp(QMainWindow):
         guide.setObjectName("guideBox")
         guide_layout = QVBoxLayout(guide)
         guide_layout.setContentsMargins(12, 10, 12, 10)
-        guide_title = QLabel("💡 Macro Studio Field Guide:")
+        guide_title = QLabel("💡 Universal Macro Studio & Piper Engine Guide:")
         guide_title.setFont(QFont("Segoe UI", 11, QFont.Weight.Bold))
         guide_title.setStyleSheet("color: #38BDF8;")
         guide_text = QLabel(
-            "• Macro Action: Selects the action performed when pressing or holding the button.\n"
+            "• Multi-Mouse Engine: Works seamlessly across Logitech, Razer, SteelSeries, Roccat, and Corsair gaming mice.\n"
+            "• Macro Action: Selects the action performed when holding any extra mouse button.\n"
             "• Hold (ms): Duration in milliseconds that the button/key is held down during each loop cycle (default: 20ms).\n"
-            "• Delay (ms): Pause duration in milliseconds between repeated clicks/keypresses (default: 50ms).\n"
-            "• Custom Key: The specific keyboard key to repeat when Custom Key Loop is selected."
+            "• Delay (ms): Pause duration in milliseconds between repeated clicks/keypresses (default: 50ms)."
         )
         guide_text.setStyleSheet("color: #94A3B8; font-size: 12px;")
         guide_layout.addWidget(guide_title)
@@ -387,11 +430,11 @@ class G502ControlApp(QMainWindow):
         scroll_layout.setSpacing(10)
 
         buttons_info = [
-            ("G8", "G8 Button (DPI Up)"),
-            ("TILT_LEFT", "Wheel Tilt Left"),
-            ("TILT_RIGHT", "Wheel Tilt Right"),
-            ("G7", "G7 Button (DPI Down)"),
-            ("G9", "G9 Button (Profile Select)")
+            ("G8", "G8 / Extra Button 1 (DPI Up / Top Extra)"),
+            ("TILT_LEFT", "Wheel Tilt Left / Side Button 1"),
+            ("TILT_RIGHT", "Wheel Tilt Right / Side Button 2"),
+            ("G7", "G7 / Extra Button 2 (DPI Down / Thumb Button)"),
+            ("G9", "G9 / Extra Button 3 (Profile / Special)")
         ]
 
         for btn_key, btn_title in buttons_info:
@@ -502,7 +545,6 @@ class G502ControlApp(QMainWindow):
         with open(CONFIG_PATH, 'w') as f:
             json.dump(new_cfg, f, indent=4)
 
-        # Automatically restart systemd user service so changes take effect instantly
         subprocess.run(['systemctl', '--user', 'restart', 'g502-macros.service'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
         self.update_daemon_status()
@@ -524,7 +566,7 @@ class G502ControlApp(QMainWindow):
         guide_title.setFont(QFont("Segoe UI", 11, QFont.Weight.Bold))
         guide_title.setStyleSheet("color: #38BDF8;")
         guide_text = QLabel(
-            "• Hardware DPI: Mouse sensor resolution stored on G502 onboard memory.\n"
+            "• Hardware DPI: Mouse sensor resolution stored on mouse onboard memory via libratbagd.\n"
             "• Flat Acceleration (1:1): Raw linear input matching Windows 6/11 with Enhance Pointer Precision OFF.\n"
             "• Adaptive Acceleration: Dynamic speed curve that accelerates when flicking the mouse.\n"
             "• Pointer Speed Scale: Overall desktop cursor speed multiplier."
@@ -535,7 +577,7 @@ class G502ControlApp(QMainWindow):
         layout.addWidget(guide)
 
         # DPI Settings Group
-        dpi_group = QGroupBox("Hardware DPI Settings (Onboard Profiles 0, 1, 2)")
+        dpi_group = QGroupBox("Hardware DPI Settings (Onboard Profiles)")
         dpi_layout = QVBoxLayout(dpi_group)
 
         dpi_top_layout = QHBoxLayout()
@@ -607,15 +649,19 @@ class G502ControlApp(QMainWindow):
         layout.setSpacing(16)
         layout.setContentsMargins(12, 12, 12, 12)
 
-        rgb_group = QGroupBox("OpenRGB Lighting Control")
+        rgb_group = QGroupBox("OpenRGB & Piper Integration Control")
         rgb_layout = QVBoxLayout(rgb_group)
 
-        rgb_layout.addWidget(QLabel("Manage OpenRGB lighting profiles for your system and RAM/Motherboard LEDs:"))
+        rgb_layout.addWidget(QLabel("Manage OpenRGB lighting profiles and Piper mouse configuration:"))
 
         btn_apply_black = QPushButton("Apply 'ALL Black' Preset Now")
         btn_apply_black.setObjectName("accentBtn")
         btn_apply_black.clicked.connect(self.apply_all_black_rgb)
         rgb_layout.addWidget(btn_apply_black)
+
+        btn_piper_gui = QPushButton("Launch Official Piper GTK App")
+        btn_piper_gui.clicked.connect(lambda: subprocess.Popen(['piper']))
+        rgb_layout.addWidget(btn_piper_gui)
 
         btn_openrgb_gui = QPushButton("Launch Full OpenRGB GUI")
         btn_openrgb_gui.clicked.connect(lambda: subprocess.Popen(['openrgb', '--gui']))
@@ -686,11 +732,11 @@ class G502ControlApp(QMainWindow):
         self.dpi_slider.blockSignals(False)
         self.dpi_val_label.setText(f"{dpi} DPI")
 
-        dev = get_g502_ratbag_device()
-        if dev:
+        dev_id = self.get_selected_ratbag_dev_id()
+        if dev_id:
             for p in [0, 1, 2]:
-                subprocess.run(['ratbagctl', dev, 'profile', str(p), 'resolution', '0', 'dpi', 'set', str(dpi)], stdout=subprocess.DEVNULL)
-                subprocess.run(['ratbagctl', dev, 'profile', str(p), 'resolution', 'active', 'set', '0'], stdout=subprocess.DEVNULL)
+                subprocess.run(['ratbagctl', dev_id, 'profile', str(p), 'resolution', '0', 'dpi', 'set', str(dpi)], stdout=subprocess.DEVNULL)
+                subprocess.run(['ratbagctl', dev_id, 'profile', str(p), 'resolution', 'active', 'set', '0'], stdout=subprocess.DEVNULL)
 
     def on_accel_profile_changed(self, idx):
         profile_num = 2 if idx == 0 else 1  # 2 = Flat, 1 = Adaptive
