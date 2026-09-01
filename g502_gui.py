@@ -421,47 +421,16 @@ class G502ControlApp(QMainWindow):
         layout.setSpacing(12)
         layout.setContentsMargins(12, 12, 12, 12)
 
-        # Header Guide Banner
-        guide = QFrame()
-        guide.setObjectName("guideBox")
-        guide_layout = QVBoxLayout(guide)
-        guide_layout.setContentsMargins(12, 8, 12, 8)
-        guide_title = QLabel("🖱️ Interactive Mouse Model & Button Selector:")
-        guide_title.setFont(QFont("Segoe UI", 11, QFont.Weight.Bold))
-        guide_title.setStyleSheet("color: #38BDF8;")
-        guide_text = QLabel("Click any mouse button on the model view below to select and customize its macro action & timing.")
-        guide_text.setStyleSheet("color: #94A3B8; font-size: 12px;")
-        guide_layout.addWidget(guide_title)
-        guide_layout.addWidget(guide_text)
-        layout.addWidget(guide)
-
         config_data = self.load_macro_config()
         self.buttons_cfg = config_data.get("buttons", {})
 
-        # Main Split Content: Left = Mouse Model Diagram + Button Pickers, Right = Button Customizer Card
+        # Main Split Content: Left = Button Pickers, Right = Button Customizer Card
         content_layout = QHBoxLayout()
         content_layout.setSpacing(16)
 
-        # Left Column: Mouse Model View & Button Selection List
+        # Left Column: Button Selection List
         model_column = QVBoxLayout()
         model_column.setSpacing(10)
-
-        # Mouse Diagram Image Display
-        diagram_frame = QFrame()
-        diagram_frame.setStyleSheet("background-color: #141720; border: 1px solid #1E293B; border-radius: 10px; padding: 10px;")
-        diagram_layout = QVBoxLayout(diagram_frame)
-        diagram_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
-        diagram_label = QLabel()
-        if os.path.exists(DIAGRAM_PATH):
-            pix = QPixmap(DIAGRAM_PATH)
-            diagram_label.setPixmap(pix.scaled(280, 360, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
-        else:
-            diagram_label.setText("🖱️ Mouse Model View")
-            diagram_label.setStyleSheet("color: #64748B; font-size: 14px;")
-
-        diagram_layout.addWidget(diagram_label)
-        model_column.addWidget(diagram_frame)
 
         # Button Selector List
         sel_label = QLabel("Select Button to Customize:")
