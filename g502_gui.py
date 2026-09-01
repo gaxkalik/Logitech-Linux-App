@@ -1,14 +1,12 @@
 #!/usr/bin/env python3
 """
-AGY Piper-Diagram Universal Gaming Mouse Control Suite
--------------------------------------------------------
-A modern PyQt6 GUI application featuring Piper's exact interactive mouse diagram layout:
-  - Center visual mouse diagram graphic (G502 diagram matching Piper)
-  - Left & Right side callout control panels for G8, G7, G9, Wheel Tilt Left, Wheel Tilt Right
-  - Dynamic button discovery per mouse device via ratbagctl info
+AGY Piper-Style Interactive Mouse Button Selection Control Suite
+----------------------------------------------------------------
+A modern PyQt6 GUI application featuring Piper's interactive button selection workflow:
+  - Interactive Mouse Button Selector: Click any physical button (G8, G7, G9, Wheel Tilt Left/Right) to select it
+  - Dedicated Button Macro Customizer for the active selected button
   - Universal multi-mouse discovery (Logitech G502, Razer, SteelSeries, Roccat, Corsair, etc.)
   - Device Selector dropdown to switch between connected gaming mice
-  - Customizable Macros (Actions, Custom Keys, Hold & Delay Timings)
   - Automatic systemd service restart on save
   - Hardware DPI & Onboard Profiles via ratbagctl
   - KDE KWin Pointer Acceleration Profile (Flat vs Adaptive) & Pointer Speed live
@@ -27,7 +25,7 @@ from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QLabel, QPushButton, QSlider, QComboBox, QCheckBox, QGroupBox,
     QTabWidget, QTextEdit, QFrame, QSpinBox, QDoubleSpinBox, QStackedWidget,
-    QGraphicsDropShadowEffect, QMessageBox, QScrollArea, QGridLayout
+    QGraphicsDropShadowEffect, QMessageBox, QScrollArea, QGridLayout, QButtonGroup
 )
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(levelname)s] %(message)s')
@@ -78,18 +76,18 @@ QTabBar::tab:hover {
 
 QGroupBox {
     font-weight: bold;
-    font-size: 13px;
+    font-size: 14px;
     border: 1px solid #232A3B;
-    border-radius: 8px;
-    margin-top: 6px;
-    padding-top: 10px;
+    border-radius: 10px;
+    margin-top: 8px;
+    padding-top: 14px;
     background-color: #181C28;
 }
 
 QGroupBox::title {
     subcontrol-origin: margin;
     subcontrol-position: top left;
-    left: 10px;
+    left: 12px;
     padding: 0 6px;
     color: #38BDF8;
 }
@@ -119,6 +117,29 @@ QPushButton:hover {
 
 QPushButton:pressed {
     background-color: #0F172A;
+}
+
+QPushButton#btnSelector {
+    background-color: #181C28;
+    color: #94A3B8;
+    border: 1px solid #232A3B;
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 13px;
+    text-align: left;
+}
+
+QPushButton#btnSelector:hover {
+    background-color: #1E293B;
+    color: #38BDF8;
+    border-color: #38BDF8;
+}
+
+QPushButton#btnSelector:checked {
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #0284C7, stop:1 #0369A1);
+    color: #FFFFFF;
+    border: 1px solid #38BDF8;
+    font-weight: bold;
 }
 
 QPushButton#accentBtn {
@@ -171,9 +192,9 @@ QComboBox {
     background-color: #1E293B;
     border: 1px solid #334155;
     border-radius: 6px;
-    padding: 5px 10px;
+    padding: 6px 12px;
     color: #F8FAFC;
-    font-size: 12px;
+    font-size: 13px;
 }
 
 QComboBox:hover {
@@ -192,9 +213,9 @@ QSpinBox, QDoubleSpinBox {
     background-color: #1E293B;
     border: 1px solid #334155;
     border-radius: 6px;
-    padding: 5px 8px;
+    padding: 6px 10px;
     color: #F8FAFC;
-    font-size: 12px;
+    font-size: 13px;
 }
 
 QSpinBox:hover, QDoubleSpinBox:hover {
@@ -229,12 +250,6 @@ QLabel#statusBadgeInactive {
     font-weight: bold;
     font-size: 12px;
 }
-
-QLabel#badgeG8 { background-color: #0369A1; color: #7DD3FC; border-radius: 4px; padding: 2px 6px; font-weight: bold; font-size: 11px; }
-QLabel#badgeTiltL { background-color: #4338CA; color: #C7D2FE; border-radius: 4px; padding: 2px 6px; font-weight: bold; font-size: 11px; }
-QLabel#badgeTiltR { background-color: #6B21A8; color: #F0ABFC; border-radius: 4px; padding: 2px 6px; font-weight: bold; font-size: 11px; }
-QLabel#badgeG7 { background-color: #047857; color: #A7F3D0; border-radius: 4px; padding: 2px 6px; font-weight: bold; font-size: 11px; }
-QLabel#badgeG9 { background-color: #B45309; color: #FDE68A; border-radius: 4px; padding: 2px 6px; font-weight: bold; font-size: 11px; }
 """
 
 ACTION_TYPES = [
@@ -297,14 +312,15 @@ def get_all_ratbag_mice():
 class G502ControlApp(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("AGY Universal Gaming Mouse Control Suite (Piper Diagram UI)")
+        self.setWindowTitle("AGY Universal Gaming Mouse Control Suite (Piper Interactive Selection)")
         if os.path.exists(ICON_PATH):
             self.setWindowIcon(QIcon(ICON_PATH))
-        self.resize(1020, 780)
+        self.resize(1000, 760)
         self.setStyleSheet(QSS_STYLE)
 
         self.mice_list = get_all_ratbag_mice()
         self.macro_widgets = {}
+        self.active_button_key = "G8"
 
         # Main Layout
         main_widget = QWidget()
@@ -323,7 +339,7 @@ class G502ControlApp(QMainWindow):
         title_label = QLabel("Universal Gaming Mouse Control Center")
         title_label.setFont(QFont("Segoe UI", 16, QFont.Weight.Bold))
         title_label.setStyleSheet("color: #F8FAFC;")
-        subtitle_label = QLabel("Piper Interactive Mouse Diagram UI & Multi-Mouse Macro Engine")
+        subtitle_label = QLabel("Interactive Button Selector & Customization Studio")
         subtitle_label.setStyleSheet("color: #64748B; font-size: 12px;")
         title_layout.addWidget(title_label)
         title_layout.addWidget(subtitle_label)
@@ -362,7 +378,7 @@ class G502ControlApp(QMainWindow):
 
         # Tab Navigation
         tabs = QTabWidget()
-        tabs.addTab(self.create_piper_diagram_tab(), "Piper Mouse Diagram Studio")
+        tabs.addTab(self.create_interactive_macro_tab(), "Interactive Button Studio")
         tabs.addTab(self.create_dashboard_tab(), "DPI & Pointer Speed")
         tabs.addTab(self.create_rgb_tab(), "RGB Lighting")
         tabs.addTab(self.create_logs_tab(), "Service Logs")
@@ -399,94 +415,10 @@ class G502ControlApp(QMainWindow):
             }
         }
 
-    def build_button_card(self, btn_key, btn_title, badge_id, badge_text, btn_data):
-        box = QGroupBox()
-        box_layout = QVBoxLayout(box)
-        box_layout.setSpacing(6)
-        box_layout.setContentsMargins(10, 8, 10, 8)
-
-        # Header Bar with Badge
-        card_head = QHBoxLayout()
-        badge_lbl = QLabel(badge_text)
-        badge_lbl.setObjectName(badge_id)
-        title_lbl = QLabel(btn_title)
-        title_lbl.setFont(QFont("Segoe UI", 10, QFont.Weight.Bold))
-        title_lbl.setStyleSheet("color: #F8FAFC;")
-        card_head.addWidget(badge_lbl)
-        card_head.addWidget(title_lbl)
-        card_head.addStretch()
-        box_layout.addLayout(card_head)
-
-        # Action Selector Row
-        act_layout = QHBoxLayout()
-        act_layout.addWidget(QLabel("Action:"))
-        combo_action = QComboBox()
-        for label, code in ACTION_TYPES:
-            combo_action.addItem(label, code)
-
-        current_action = btn_data.get("action_type", "LEFT_CLICK_LOOP")
-        for idx in range(combo_action.count()):
-            if combo_action.itemData(idx) == current_action:
-                combo_action.setCurrentIndex(idx)
-                break
-        act_layout.addWidget(combo_action)
-        box_layout.addLayout(act_layout)
-
-        # Custom Key Selector Row
-        key_layout = QHBoxLayout()
-        lbl_custom_key = QLabel("Custom Key:")
-        combo_key = QComboBox()
-        for label, code in CUSTOM_KEYS:
-            combo_key.addItem(label, code)
-
-        current_key = btn_data.get("custom_key", "KEY_SPACE")
-        for idx in range(combo_key.count()):
-            if combo_key.itemData(idx) == current_key:
-                combo_key.setCurrentIndex(idx)
-                break
-        key_layout.addWidget(lbl_custom_key)
-        key_layout.addWidget(combo_key)
-        box_layout.addLayout(key_layout)
-
-        # Timings Row (Hold ms + Delay ms)
-        timing_layout = QHBoxLayout()
-        timing_layout.addWidget(QLabel("Hold:"))
-        spin_hold = QSpinBox()
-        spin_hold.setRange(5, 500)
-        spin_hold.setSingleStep(5)
-        spin_hold.setValue(btn_data.get("hold_ms", 20))
-        timing_layout.addWidget(spin_hold)
-
-        timing_layout.addWidget(QLabel("ms  Delay:"))
-        spin_delay = QSpinBox()
-        spin_delay.setRange(5, 1000)
-        spin_delay.setSingleStep(5)
-        spin_delay.setValue(btn_data.get("delay_ms", 50))
-        timing_layout.addWidget(spin_delay)
-        timing_layout.addWidget(QLabel("ms"))
-
-        box_layout.addLayout(timing_layout)
-
-        def update_key_vis(idx=0, c_lbl=lbl_custom_key, c_key=combo_key, c_act=combo_action):
-            is_custom = (c_act.currentData() == "CUSTOM_KEY_LOOP")
-            c_lbl.setVisible(is_custom)
-            c_key.setVisible(is_custom)
-
-        combo_action.currentIndexChanged.connect(update_key_vis)
-        update_key_vis()
-
-        self.macro_widgets[btn_key] = {
-            "combo_action": combo_action,
-            "combo_key": combo_key,
-            "spin_hold": spin_hold,
-            "spin_delay": spin_delay
-        }
-        return box
-
-    def create_piper_diagram_tab(self):
+    def create_interactive_macro_tab(self):
         tab = QWidget()
         layout = QVBoxLayout(tab)
-        layout.setSpacing(10)
+        layout.setSpacing(12)
         layout.setContentsMargins(12, 12, 12, 12)
 
         # Header Guide Banner
@@ -494,55 +426,140 @@ class G502ControlApp(QMainWindow):
         guide.setObjectName("guideBox")
         guide_layout = QVBoxLayout(guide)
         guide_layout.setContentsMargins(12, 8, 12, 8)
-        guide_title = QLabel("🖱️ Piper Interactive Mouse Diagram UI:")
+        guide_title = QLabel("🖱️ Interactive Mouse Model & Button Selector:")
         guide_title.setFont(QFont("Segoe UI", 11, QFont.Weight.Bold))
         guide_title.setStyleSheet("color: #38BDF8;")
-        guide_text = QLabel("Configure button callouts directly alongside the interactive Piper mouse graphic diagram.")
+        guide_text = QLabel("Click any mouse button on the model view below to select and customize its macro action & timing.")
         guide_text.setStyleSheet("color: #94A3B8; font-size: 12px;")
         guide_layout.addWidget(guide_title)
         guide_layout.addWidget(guide_text)
         layout.addWidget(guide)
 
         config_data = self.load_macro_config()
-        buttons_cfg = config_data.get("buttons", {})
+        self.buttons_cfg = config_data.get("buttons", {})
 
-        # Main 3-Column Piper Diagram Layout: [Left Buttons Panel] [Center Mouse Graphic] [Right Buttons Panel]
-        diagram_container = QHBoxLayout()
-        diagram_container.setSpacing(16)
+        # Main Split Content: Left = Mouse Model Diagram + Button Pickers, Right = Button Customizer Card
+        content_layout = QHBoxLayout()
+        content_layout.setSpacing(16)
 
-        # Left Callout Panel (G8 DPI Up, Wheel Tilt Left, G7 DPI Down)
-        left_panel = QVBoxLayout()
-        left_panel.setSpacing(8)
-        left_panel.addWidget(self.build_button_card("G8", "Resolution Up (G8)", "badgeG8", "[ G8 ]", buttons_cfg.get("G8", {})))
-        left_panel.addWidget(self.build_button_card("TILT_LEFT", "Wheel Tilt Left", "badgeTiltL", "[ TILT ◄ ]", buttons_cfg.get("TILT_LEFT", {})))
-        left_panel.addWidget(self.build_button_card("G7", "Resolution Down (G7)", "badgeG7", "[ G7 ]", buttons_cfg.get("G7", {})))
-        left_panel.addStretch()
-        diagram_container.addLayout(left_panel, stretch=2)
+        # Left Column: Mouse Model View & Button Selection List
+        model_column = QVBoxLayout()
+        model_column.setSpacing(10)
 
-        # Center Mouse Diagram Graphic
-        center_panel = QVBoxLayout()
-        center_panel.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        # Mouse Diagram Image Display
+        diagram_frame = QFrame()
+        diagram_frame.setStyleSheet("background-color: #141720; border: 1px solid #1E293B; border-radius: 10px; padding: 10px;")
+        diagram_layout = QVBoxLayout(diagram_frame)
+        diagram_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         diagram_label = QLabel()
         if os.path.exists(DIAGRAM_PATH):
             pix = QPixmap(DIAGRAM_PATH)
-            diagram_label.setPixmap(pix.scaled(320, 440, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
+            diagram_label.setPixmap(pix.scaled(280, 360, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
         else:
-            diagram_label.setText("🖱️ Piper Mouse Diagram")
+            diagram_label.setText("🖱️ Mouse Model View")
             diagram_label.setStyleSheet("color: #64748B; font-size: 14px;")
 
-        center_panel.addWidget(diagram_label)
-        diagram_container.addLayout(center_panel, stretch=3)
+        diagram_layout.addWidget(diagram_label)
+        model_column.addWidget(diagram_frame)
 
-        # Right Callout Panel (Wheel Tilt Right, G9 Profile / Special)
-        right_panel = QVBoxLayout()
-        right_panel.setSpacing(8)
-        right_panel.addWidget(self.build_button_card("TILT_RIGHT", "Wheel Tilt Right", "badgeTiltR", "[ TILT ► ]", buttons_cfg.get("TILT_RIGHT", {})))
-        right_panel.addWidget(self.build_button_card("G9", "Resolution Switch (G9)", "badgeG9", "[ G9 ]", buttons_cfg.get("G9", {})))
-        right_panel.addStretch()
-        diagram_container.addLayout(right_panel, stretch=2)
+        # Button Selector List
+        sel_label = QLabel("Select Button to Customize:")
+        sel_label.setFont(QFont("Segoe UI", 11, QFont.Weight.Bold))
+        sel_label.setStyleSheet("color: #38BDF8;")
+        model_column.addWidget(sel_label)
 
-        layout.addLayout(diagram_container)
+        self.btn_group = QButtonGroup(self)
+        self.btn_group.setExclusive(True)
+
+        buttons_list_info = [
+            ("G8", "G8 — Resolution Up (Top Button)"),
+            ("TILT_LEFT", "Wheel Tilt Left (Scroll Left)"),
+            ("TILT_RIGHT", "Wheel Tilt Right (Scroll Right)"),
+            ("G7", "G7 — Resolution Down (Thumb/Side)"),
+            ("G9", "G9 — Resolution Switch (Profile)")
+        ]
+
+        self.selector_buttons = {}
+        for btn_key, btn_label in buttons_list_info:
+            b = QPushButton(f"  ●  {btn_label}")
+            b.setObjectName("btnSelector")
+            b.setCheckable(True)
+            b.setFixedHeight(38)
+            b.setFont(QFont("Segoe UI", 10))
+            if btn_key == self.active_button_key:
+                b.setChecked(True)
+            b.clicked.connect(lambda _, k=btn_key: self.select_button(k))
+            self.btn_group.addButton(b)
+            model_column.addWidget(b)
+            self.selector_buttons[btn_key] = b
+
+        model_column.addStretch()
+        content_layout.addLayout(model_column, stretch=3)
+
+        # Right Column: Customization Panel for Currently Selected Button
+        self.customizer_box = QGroupBox("Customize Selected Button Macro")
+        customizer_layout = QVBoxLayout(self.customizer_box)
+        customizer_layout.setSpacing(14)
+        customizer_layout.setContentsMargins(16, 16, 16, 16)
+
+        # Active Button Title Badge
+        self.selected_title_lbl = QLabel("Editing: G8 — Resolution Up")
+        self.selected_title_lbl.setFont(QFont("Segoe UI", 13, QFont.Weight.Bold))
+        self.selected_title_lbl.setStyleSheet("color: #38BDF8;")
+        customizer_layout.addWidget(self.selected_title_lbl)
+
+        # Macro Action Dropdown
+        customizer_layout.addWidget(QLabel("Macro Action:"))
+        self.combo_action = QComboBox()
+        self.combo_action.setToolTip("Select the action performed when holding this button.")
+        for label, code in ACTION_TYPES:
+            self.combo_action.addItem(label, code)
+        self.combo_action.currentIndexChanged.connect(self.on_active_action_changed)
+        customizer_layout.addWidget(self.combo_action)
+
+        # Custom Key Dropdown
+        self.lbl_custom_key = QLabel("Custom Key to Repeat:")
+        customizer_layout.addWidget(self.lbl_custom_key)
+        self.combo_key = QComboBox()
+        self.combo_key.setToolTip("Pick the specific keyboard key to repeat.")
+        for label, code in CUSTOM_KEYS:
+            self.combo_key.addItem(label, code)
+        self.combo_key.currentIndexChanged.connect(self.on_active_field_changed)
+        customizer_layout.addWidget(self.combo_key)
+
+        # Hold Duration (ms)
+        customizer_layout.addWidget(QLabel("Hold Duration (ms):"))
+        self.spin_hold = QSpinBox()
+        self.spin_hold.setToolTip("Milliseconds key/click is held down per repeat cycle.")
+        self.spin_hold.setRange(5, 500)
+        self.spin_hold.setSingleStep(5)
+        self.spin_hold.valueChanged.connect(self.on_active_field_changed)
+        customizer_layout.addWidget(self.spin_hold)
+
+        # Repeat Delay (ms)
+        customizer_layout.addWidget(QLabel("Repeat Delay (ms):"))
+        self.spin_delay = QSpinBox()
+        self.spin_delay.setToolTip("Milliseconds pause between repeat clicks/presses.")
+        self.spin_delay.setRange(5, 1000)
+        self.spin_delay.setSingleStep(5)
+        self.spin_delay.valueChanged.connect(self.on_active_field_changed)
+        customizer_layout.addWidget(self.spin_delay)
+
+        # Live Summary Card
+        summary_frame = QFrame()
+        summary_frame.setStyleSheet("background-color: #0F131E; border: 1px solid #1E293B; border-radius: 6px; padding: 10px;")
+        summary_layout = QVBoxLayout(summary_frame)
+        self.summary_lbl = QLabel("Summary: Holding G8 will repeat Left Click (20ms hold / 50ms delay).")
+        self.summary_lbl.setWordWrap(True)
+        self.summary_lbl.setStyleSheet("color: #94A3B8; font-size: 12px;")
+        summary_layout.addWidget(self.summary_lbl)
+        customizer_layout.addWidget(summary_frame)
+
+        customizer_layout.addStretch()
+        content_layout.addWidget(self.customizer_box, stretch=4)
+
+        layout.addLayout(content_layout)
 
         # Save Button Bar
         btn_bar = QHBoxLayout()
@@ -554,23 +571,91 @@ class G502ControlApp(QMainWindow):
         btn_bar.addWidget(btn_save)
 
         layout.addLayout(btn_bar)
+
+        # Initialize controls for active button
+        self.select_button("G8")
+
         return tab
 
-    def save_macro_config(self):
-        new_cfg = {"buttons": {}}
-        for btn_key, widgets in self.macro_widgets.items():
-            action_code = widgets["combo_action"].currentData()
-            custom_key = widgets["combo_key"].currentData()
-            hold_ms = widgets["spin_hold"].value()
-            delay_ms = widgets["spin_delay"].value()
+    def select_button(self, btn_key):
+        self.active_button_key = btn_key
+        btn_titles = {
+            "G8": "G8 — Resolution Up (Top Button)",
+            "TILT_LEFT": "Wheel Tilt Left (Scroll Left)",
+            "TILT_RIGHT": "Wheel Tilt Right (Scroll Right)",
+            "G7": "G7 — Resolution Down (Thumb/Side)",
+            "G9": "G9 — Resolution Switch (Profile)"
+        }
+        self.selected_title_lbl.setText(f"Editing Macro: {btn_titles.get(btn_key, btn_key)}")
 
-            new_cfg["buttons"][btn_key] = {
-                "name": btn_key,
-                "action_type": action_code,
-                "hold_ms": hold_ms,
-                "delay_ms": delay_ms,
-                "custom_key": custom_key
-            }
+        btn_data = self.buttons_cfg.get(btn_key, {})
+        action_type = btn_data.get("action_type", "LEFT_CLICK_LOOP")
+        custom_key = btn_data.get("custom_key", "KEY_SPACE")
+        hold_ms = btn_data.get("hold_ms", 20)
+        delay_ms = btn_data.get("delay_ms", 50)
+
+        # Block signals during value update
+        self.combo_action.blockSignals(True)
+        self.combo_key.blockSignals(True)
+        self.spin_hold.blockSignals(True)
+        self.spin_delay.blockSignals(True)
+
+        for idx in range(self.combo_action.count()):
+            if self.combo_action.itemData(idx) == action_type:
+                self.combo_action.setCurrentIndex(idx)
+                break
+
+        for idx in range(self.combo_key.count()):
+            if self.combo_key.itemData(idx) == custom_key:
+                self.combo_key.setCurrentIndex(idx)
+                break
+
+        self.spin_hold.setValue(hold_ms)
+        self.spin_delay.setValue(delay_ms)
+
+        self.combo_action.blockSignals(False)
+        self.combo_key.blockSignals(False)
+        self.spin_hold.blockSignals(False)
+        self.spin_delay.blockSignals(False)
+
+        self.on_active_action_changed()
+
+    def on_active_action_changed(self):
+        is_custom = (self.combo_action.currentData() == "CUSTOM_KEY_LOOP")
+        self.lbl_custom_key.setVisible(is_custom)
+        self.combo_key.setVisible(is_custom)
+        self.on_active_field_changed()
+
+    def on_active_field_changed(self):
+        btn_key = self.active_button_key
+        action_code = self.combo_action.currentData()
+        action_text = self.combo_action.currentText()
+        key_code = self.combo_key.currentData()
+        key_text = self.combo_key.currentText()
+        hold_ms = self.spin_hold.value()
+        delay_ms = self.spin_delay.value()
+
+        # Update in-memory dict
+        self.buttons_cfg[btn_key] = {
+            "name": btn_key,
+            "action_type": action_code,
+            "hold_ms": hold_ms,
+            "delay_ms": delay_ms,
+            "custom_key": key_code
+        }
+
+        # Update summary string
+        if action_code == "CUSTOM_KEY_LOOP":
+            self.summary_lbl.setText(f"Summary: Holding {btn_key} will repeat key [{key_text}] ({hold_ms}ms hold / {delay_ms}ms delay).")
+        elif action_code == "CLIPBOARD_WIN_V":
+            self.summary_lbl.setText(f"Summary: Pressing {btn_key} will open Win + V Clipboard History.")
+        elif action_code == "DISABLED":
+            self.summary_lbl.setText(f"Summary: {btn_key} macro is disabled.")
+        else:
+            self.summary_lbl.setText(f"Summary: Holding {btn_key} will repeat {action_text} ({hold_ms}ms hold / {delay_ms}ms delay).")
+
+    def save_macro_config(self):
+        new_cfg = {"buttons": self.buttons_cfg}
 
         os.makedirs(os.path.dirname(CONFIG_PATH), exist_ok=True)
         with open(CONFIG_PATH, 'w') as f:
@@ -580,7 +665,7 @@ class G502ControlApp(QMainWindow):
 
         self.update_daemon_status()
         self.refresh_logs()
-        QMessageBox.information(self, "Macro Studio", "Macro settings saved! Service automatically restarted & applied live.")
+        QMessageBox.information(self, "Macro Studio", f"Macro settings saved! Service automatically restarted & applied live.")
 
     def create_dashboard_tab(self):
         tab = QWidget()
