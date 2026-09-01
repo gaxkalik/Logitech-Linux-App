@@ -2,16 +2,19 @@
 
 A zero-lag, native Linux multi-mouse macro daemon, hardware DPI tuner, and PyQt6 GUI Control Center powered by **libratbagd** & **Piper** engine integration.
 
+> [!NOTE]  
+> **⚠️ Testing Disclaimer**: This software is actively tested and verified exclusively on the **Logitech Gaming Mouse G502** (`usb:046d:c332`). While the `libratbagd` architecture supports multi-mouse discovery for other gaming mice (Razer, SteelSeries, Roccat, Corsair, etc.), hardware event timings and button mappings are currently benchmarked and confirmed working on the G502.
+
 ---
 
 ## ✨ Features & Multi-Mouse Capabilities
 
 - **🐭 Universal Gaming Mouse Support (`libratbagd` / `piper`)**:
-  - Dynamically discovers all connected gaming mice (Logitech G502, G402, G305, G Pro, SteelSeries, Razer, Roccat, Corsair, Asus, Etekcity, etc.).
+  - Dynamically discovers connected gaming mice supported by `libratbagd`.
   - **Mouse Device Selector**: Switch active mouse devices on-the-fly directly inside the GUI application.
 - **⚡ Zero-Lag Passive Monitoring**: Passively reads hardware event nodes (`/dev/input/event*`) without calling `dev.grab()`. Cursor movement (`REL_X`, `REL_Y` at 1000Hz) and primary clicks pass directly to the kernel with **0.00ms input latency** in games.
 - **🎨 PyQt6 GUI Control Center & Macro Studio (`g502_gui.py`)**:
-  - **Macro Customization Studio**: Customize button functions (**G7**, **G8**, **G9**, **Wheel Tilt Left**, **Wheel Tilt Right**, and Extra Mouse Buttons), hold duration (ms), and repeat delay (ms) live.
+  - **Interactive Button Selector Studio**: Click to select any physical button (**G8**, **G7**, **G9**, **Wheel Tilt Left**, **Wheel Tilt Right**, and Extra Mouse Buttons), customize hold duration (ms), and repeat delay (ms) live.
   - **Action Selectors**: Left Click Loop, Right Click Loop, Middle Click Loop, Space Key Loop, Win + V Clipboard History, Custom Key Loop, or Disabled.
   - **Custom Key Mapping**: Map any keyboard key (`E`, `F`, `Q`, `R`, `Shift`, `Ctrl`, `Alt`, `Enter`, `Tab`, numbers, etc.) to repeat when held.
   - **Auto-Apply on Save**: Clicking *Save & Apply All Macro Settings* automatically restarts `g502-macros.service` so changes take effect instantly.
@@ -28,8 +31,8 @@ A zero-lag, native Linux multi-mouse macro daemon, hardware DPI tuner, and PyQt6
 
 1. **Clone the repository**:
    ```bash
-   git clone git@github.com:gaxkalik/Logitech-G502-Linux-App.git
-   cd Logitech-G502-Linux-App
+   git clone git@github.com:gaxkalik/Logitech-Linux-App.git
+   cd Logitech-Linux-App
    ```
 
 2. **Run the installer**:
