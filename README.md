@@ -1,29 +1,35 @@
-# 🖱️ Universal Gaming Mouse Hardware Macro & Control Suite
+# 🖱️🎧 Logitech Linux Control Suite & Macro Studio (G502 Mouse & G733 Headset)
 
-A zero-lag, native Linux multi-mouse macro daemon, hardware DPI tuner, and PyQt6 GUI Control Center powered by **libratbagd** & **Piper** engine integration.
+A zero-lag, native Linux control center for Logitech Gaming Gear featuring multi-device hardware macro daemons, DPI tuning, PipeWire audio controls, OpenRGB lighting integration, system tray minimization, and Piper interactive customization.
 
 > [!NOTE]  
-> **⚠️ Testing Disclaimer**: This software is actively tested and verified exclusively on the **Logitech Gaming Mouse G502** (`usb:046d:c332`). While the `libratbagd` architecture supports multi-mouse discovery for other gaming mice (Razer, SteelSeries, Roccat, Corsair, etc.), hardware event timings and button mappings are currently benchmarked and confirmed working on the G502.
+> **⚠️ Verified Hardware**: Tested and verified on **Logitech Gaming Mouse G502** (`usb:046d:c332` / `c539`) and **Logitech G733 LIGHTSPEED Wireless Gaming Headset** (`usb:046d:0ab5`).
 
 ---
 
-## ✨ Features & Multi-Mouse Capabilities
+## ✨ Features & Multi-Device Capabilities
 
-- **🐭 Universal Gaming Mouse Support (`libratbagd` / `piper`)**:
-  - Dynamically discovers connected gaming mice supported by `libratbagd`.
-  - **Mouse Device Selector**: Switch active mouse devices on-the-fly directly inside the GUI application.
-- **⚡ Zero-Lag Passive Monitoring**: Passively reads hardware event nodes (`/dev/input/event*`) without calling `dev.grab()`. Cursor movement (`REL_X`, `REL_Y` at 1000Hz) and primary clicks pass directly to the kernel with **0.00ms input latency** in games.
-- **🎨 PyQt6 GUI Control Center & Macro Studio (`g502_gui.py`)**:
-  - **Interactive Button Selector Studio**: Click to select any physical button (**G8**, **G7**, **G9**, **Wheel Tilt Left**, **Wheel Tilt Right**, and Extra Mouse Buttons), customize hold duration (ms), and repeat delay (ms) live.
-  - **Action Selectors**: Left Click Loop, Right Click Loop, Middle Click Loop, Space Key Loop, Win + V Clipboard History, Custom Key Loop, or Disabled.
-  - **Custom Key Mapping**: Map any keyboard key (`E`, `F`, `Q`, `R`, `Shift`, `Ctrl`, `Alt`, `Enter`, `Tab`, numbers, etc.) to repeat when held.
-  - **Auto-Apply on Save**: Clicking *Save & Apply All Macro Settings* automatically restarts `g502-macros.service` so changes take effect instantly.
-  - **Hardware DPI Controls**: Live hardware sensor resolution adjustments (400 - 4000+ DPI, default 1200 DPI) synced across all onboard mouse memory profiles (`ratbagctl`).
-  - **Pointer Acceleration Profile**: Toggle between **Flat (1:1 Raw Linear)** and **Adaptive (Windows-style Curve)**.
-  - **Pointer Speed Slider**: Live KWin DBus + `kcminputrc` pointer acceleration scaling (`0.000` to `1.000`).
-  - **OpenRGB & Piper Integration**: One-click launch for **Piper GTK App** and **OpenRGB**.
-- **⚙️ Dynamic JSON Config (`~/.config/g502_macros/config.json`)**: Persistent configuration loaded at startup and reloaded live.
-- **🖥️ Systemd Autostart**: User service unit files to run headlessly at boot.
+### 🖱️ Gaming Mouse Studio (Logitech G502 & `libratbagd`)
+- **Interactive Button Selector Studio**: Click to select physical mouse buttons (**G8**, **G7**, **G9**, **Wheel Tilt Left**, **Wheel Tilt Right**, etc.), set hold duration (ms), repeat delay (ms), and macro actions live.
+- **Action Selectors**: Left Click Loop, Right Click Loop, Middle Click Loop, Space Key Loop, Win + V Clipboard History, Custom Key Loop, or Disabled.
+- **Hardware DPI Controls**: Live sensor resolution adjustments (400 - 4000+ DPI, default 1200 DPI) synced across onboard mouse profiles via `ratbagctl`.
+- **Pointer Acceleration & Speed**: Toggle between **Flat (1:1 Raw Linear)** and **Adaptive (Windows-style Curve)** with live KDE KWin DBus scaling.
+
+### 🎧 Gaming Headset Studio (Logitech G733 & PipeWire / ALSA)
+- **Sound & Equalizer**: Live Master Headphone Volume slider, output mute toggle, 5-Band EQ sliders (60Hz, 250Hz, 1kHz, 4kHz, 12kHz), and EQ Presets (*Flat 1:1, FPS Gaming, Bass Boost, Cinematic*).
+- **Microphone Controls**: Live Mic Gain level slider, instant Mute/Unmute button, Hardware Sidetone Level slider (to naturally hear your own voice), and Live Mic Test Level bar.
+- **RGB Lightstrip Effects**: OpenRGB color picker for G733 front lightstrips, static colors, breathing pulse, spectrum cycle, and quick color palettes.
+
+### ⚙️ Settings Studio & 📌 System Tray Integration
+- **Gear Icon Settings Page (⚙)**:
+  - **Themes & Appearance**: Dark Void (Default), Midnight Cyan, Cyberpunk Neon, Slate Dark.
+  - **System Health Audit / Diagnostics**: Live check of `g502-macros.service`, `ratbagd`, PipeWire audio daemon, OpenRGB, and input nodes.
+  - **System Tray Options**: Minimize window to system tray on close when macro daemon is active.
+  - **About & Repository**: Direct link to GitHub repository (`https://github.com/gaxkalik/Logitech-Linux-App`).
+- **📌 System Tray Menu (`QSystemTrayIcon`)**:
+  - Keep background macro service active when main window is closed.
+  - Quick actions: Open Control Center, Mute/Unmute Headset Mic, Toggle Macro Service, Settings, Quit.
+- **☰ Hamburger Menu**: Quick device switcher to toggle between **🖱️ Logitech G502 Mouse** and **🎧 Logitech G733 Headset**.
 
 ---
 
@@ -42,20 +48,20 @@ A zero-lag, native Linux multi-mouse macro daemon, hardware DPI tuner, and PyQt6
    ```
 
 3. **Launch the Control Center**:
-   - Open **"Logitech G502 Control Center"** from your desktop Application Menu / Launcher.
-   - Or run from terminal:
+   - Launch **"Logitech Control Center"** from your desktop Application Menu / Launcher.
+   - Or execute in terminal:
      ```bash
      ./g502_gui.py
      ```
 
 ---
 
-## 🔧 Requirements
+## 🔧 System Requirements
 
 - Python 3.10+
 - `python-evdev`
 - `PyQt6`
 - `libratbag` / `ratbagctl`
-- `piper` (optional GTK frontend)
+- `pipewire` / `wireplumber` / `pulseaudio-utils`
+- `openrgb` (optional for lighting effects)
 - `systemd` (user session)
-- `openrgb` (optional)
