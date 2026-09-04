@@ -221,6 +221,62 @@ QWidget {{
     color: {t['text_main']};
 }}
 
+QLabel {{
+    border: none;
+    background: transparent;
+    color: {t['text_main']};
+}}
+
+QLabel#headerTitle {{
+    color: {t['text_main']};
+    font-size: 16px;
+    font-weight: bold;
+    border: none;
+    background: transparent;
+}}
+
+QLabel#headerSubtitle {{
+    color: {t['text_sub']};
+    font-size: 11px;
+    border: none;
+    background: transparent;
+}}
+
+QLabel#sectionHeader {{
+    color: {t['accent']};
+    font-size: 12px;
+    font-weight: bold;
+    border: none;
+    background: transparent;
+}}
+
+QLabel#accentTitle {{
+    color: {t['accent']};
+    font-weight: bold;
+    border: none;
+    background: transparent;
+}}
+
+QLabel#subText {{
+    color: {t['text_sub']};
+    font-size: 12px;
+    border: none;
+    background: transparent;
+}}
+
+QFrame#headerBar {{
+    background-color: {t['bg_card']};
+    border: 1px solid {t['border']};
+    border-radius: 10px;
+}}
+
+QFrame#summaryBox {{
+    background-color: {t['bg_main']};
+    border: 1px solid {t['border']};
+    border-radius: 6px;
+    padding: 10px;
+}}
+
 QTabWidget::pane {{
     border: 1px solid {t['border']};
     background-color: {t['bg_card']};
@@ -319,21 +375,21 @@ QPushButton#btnSelector:hover {{
 
 QPushButton#btnSelector:checked {{
     background-color: {t['accent']};
-    color: #000000;
+    color: {t['bg_main']};
     border: 1px solid {t['accent']};
     font-weight: bold;
 }}
 
 QPushButton#accentBtn {{
     background-color: {t['accent']};
-    color: #000000;
+    color: {t['bg_main']};
     border: none;
     font-weight: bold;
 }}
 
 QPushButton#accentBtn:hover {{
     opacity: 0.9;
-    border: 1px solid #FFFFFF;
+    border: 1px solid {t['accent']};
 }}
 
 QPushButton#stopBtn {{
@@ -389,7 +445,7 @@ QComboBox QAbstractItemView {{
     background-color: {t['bg_input']};
     color: {t['text_main']};
     selection-background-color: {t['accent']};
-    selection-color: #000000;
+    selection-color: {t['bg_main']};
     border: 1px solid {t['border']};
 }}
 
@@ -410,9 +466,22 @@ QTextEdit {{
     background-color: {t['bg_main']};
     border: 1px solid {t['border']};
     border-radius: 6px;
-    color: {t['accent']};
+    color: {t['text_main']};
     font-family: 'Consolas', 'Monaco', monospace;
     font-size: 12px;
+}}
+
+QProgressBar {{
+    background-color: {t['bg_input']};
+    border: 1px solid {t['border']};
+    border-radius: 6px;
+    text-align: center;
+    color: {t['text_main']};
+}}
+
+QProgressBar::chunk {{
+    background-color: {t['accent']};
+    border-radius: 5px;
 }}
 
 QLabel#statusBadgeActive {{
@@ -436,9 +505,9 @@ QLabel#statusBadgeInactive {{
 }}
 
 QLabel#batteryBadge {{
-    background-color: #1E293B;
-    color: #38BDF8;
-    border: 1px solid #38BDF8;
+    background-color: {t['bg_input']};
+    color: {t['accent']};
+    border: 1px solid {t['accent']};
     border-radius: 12px;
     padding: 4px 12px;
     font-weight: bold;
@@ -732,7 +801,7 @@ class SettingsDialog(QDialog):
 
         title = QLabel("⚙ Settings & Diagnostics Studio")
         title.setFont(QFont("Segoe UI", 14, QFont.Weight.Bold))
-        title.setStyleSheet("color: #38BDF8;")
+        title.setObjectName("accentTitle")
         layout.addWidget(title)
 
         tabs = QTabWidget()
@@ -773,7 +842,7 @@ class SettingsDialog(QDialog):
         glayout.addWidget(self.combo_theme)
 
         theme_info = QLabel("Theme changes apply live instantly across all window controls and tabs.")
-        theme_info.setStyleSheet("color: #94A3B8; font-size: 12px;")
+        theme_info.setObjectName("subText")
         glayout.addWidget(theme_info)
 
         layout.addWidget(grp)
@@ -871,7 +940,7 @@ class SettingsDialog(QDialog):
 
         lbl_app = QLabel("Logitech Linux Control Suite & Macro Studio")
         lbl_app.setFont(QFont("Segoe UI", 13, QFont.Weight.Bold))
-        lbl_app.setStyleSheet("color: #38BDF8;")
+        lbl_app.setObjectName("accentTitle")
         layout.addWidget(lbl_app)
 
         lbl_desc = QLabel(
@@ -882,7 +951,7 @@ class SettingsDialog(QDialog):
             "• Spoken battery percentage announcements on power button press."
         )
         lbl_desc.setWordWrap(True)
-        lbl_desc.setStyleSheet("color: #94A3B8; font-size: 12px;")
+        lbl_desc.setObjectName("subText")
         layout.addWidget(lbl_desc)
 
         btn_github = QPushButton("🌐 Open GitHub Repository (gaxkalik/Logitech-Linux-App)")
@@ -918,7 +987,7 @@ class G502ControlApp(QMainWindow):
 
         # Header Bar
         header = QFrame()
-        header.setStyleSheet("background-color: #141720; border-radius: 10px; border: 1px solid #1E293B;")
+        header.setObjectName("headerBar")
         header_layout = QHBoxLayout(header)
         header_layout.setContentsMargins(12, 10, 12, 10)
 
@@ -932,9 +1001,9 @@ class G502ControlApp(QMainWindow):
         title_layout = QVBoxLayout()
         title_label = QLabel("Logitech Linux Control Suite")
         title_label.setFont(QFont("Segoe UI", 15, QFont.Weight.Bold))
-        title_label.setStyleSheet("color: #F8FAFC;")
+        title_label.setObjectName("headerTitle")
         subtitle_label = QLabel("Mouse Macros & Headset Control Center")
-        subtitle_label.setStyleSheet("color: #64748B; font-size: 11px;")
+        subtitle_label.setObjectName("headerSubtitle")
         title_layout.addWidget(title_label)
         title_layout.addWidget(subtitle_label)
 
@@ -952,7 +1021,7 @@ class G502ControlApp(QMainWindow):
         # Device Selector Dropdown (Mouse vs Headset)
         device_layout = QVBoxLayout()
         dev_title = QLabel("Select Connected Device:")
-        dev_title.setStyleSheet("color: #38BDF8; font-weight: bold; font-size: 11px;")
+        dev_title.setObjectName("sectionHeader")
         self.combo_main_device = QComboBox()
         self.combo_main_device.setMinimumWidth(250)
         self.combo_main_device.addItem("🖱️ Logitech G502 Gaming Mouse", "MOUSE")
@@ -1195,7 +1264,7 @@ class G502ControlApp(QMainWindow):
 
         sel_label = QLabel("Select Mouse Button to Customize:")
         sel_label.setFont(QFont("Segoe UI", 11, QFont.Weight.Bold))
-        sel_label.setStyleSheet("color: #38BDF8;")
+        sel_label.setObjectName("accentTitle")
         model_column.addWidget(sel_label)
 
         self.btn_group = QButtonGroup(self)
@@ -1233,7 +1302,7 @@ class G502ControlApp(QMainWindow):
 
         self.selected_title_lbl = QLabel("Editing: G8 — Resolution Up")
         self.selected_title_lbl.setFont(QFont("Segoe UI", 13, QFont.Weight.Bold))
-        self.selected_title_lbl.setStyleSheet("color: #38BDF8;")
+        self.selected_title_lbl.setObjectName("accentTitle")
         customizer_layout.addWidget(self.selected_title_lbl)
 
         customizer_layout.addWidget(QLabel("Macro Action:"))
@@ -1266,11 +1335,11 @@ class G502ControlApp(QMainWindow):
         customizer_layout.addWidget(self.spin_delay)
 
         summary_frame = QFrame()
-        summary_frame.setStyleSheet("background-color: #0F131E; border: 1px solid #1E293B; border-radius: 6px; padding: 10px;")
+        summary_frame.setObjectName("summaryBox")
         summary_layout = QVBoxLayout(summary_frame)
         self.summary_lbl = QLabel("Summary: Holding G8 will repeat Left Click.")
         self.summary_lbl.setWordWrap(True)
-        self.summary_lbl.setStyleSheet("color: #94A3B8; font-size: 12px;")
+        self.summary_lbl.setObjectName("subText")
         summary_layout.addWidget(self.summary_lbl)
         customizer_layout.addWidget(summary_frame)
 
@@ -1389,14 +1458,14 @@ class G502ControlApp(QMainWindow):
         guide_layout.setContentsMargins(12, 10, 12, 10)
         guide_title = QLabel("💡 DPI & Pointer Speed Guide:")
         guide_title.setFont(QFont("Segoe UI", 11, QFont.Weight.Bold))
-        guide_title.setStyleSheet("color: #38BDF8;")
+        guide_title.setObjectName("accentTitle")
         guide_text = QLabel(
             "• Hardware DPI: Mouse sensor resolution stored on mouse onboard memory via libratbagd.\n"
             "• Flat Acceleration (1:1): Raw linear input matching Windows 6/11 with Enhance Pointer Precision OFF.\n"
             "• Adaptive Acceleration: Dynamic speed curve that accelerates when flicking the mouse.\n"
             "• Pointer Speed Scale: Overall desktop cursor speed multiplier."
         )
-        guide_text.setStyleSheet("color: #94A3B8; font-size: 12px;")
+        guide_text.setObjectName("subText")
         guide_layout.addWidget(guide_title)
         guide_layout.addWidget(guide_text)
         layout.addWidget(guide)
@@ -1408,7 +1477,7 @@ class G502ControlApp(QMainWindow):
         dpi_label = QLabel("Active Hardware DPI:")
         dpi_label.setFont(QFont("Segoe UI", 11, QFont.Weight.Bold))
         self.dpi_val_label = QLabel("1200 DPI")
-        self.dpi_val_label.setStyleSheet("color: #38BDF8; font-weight: bold; font-size: 15px;")
+        self.dpi_val_label.setObjectName("accentTitle")
         dpi_top_layout.addWidget(dpi_label)
         dpi_top_layout.addWidget(self.dpi_val_label)
         dpi_top_layout.addStretch()
@@ -1449,7 +1518,7 @@ class G502ControlApp(QMainWindow):
         speed_slider_layout = QHBoxLayout()
         speed_slider_layout.addWidget(QLabel("Pointer Speed Scale:"))
         self.speed_val_label = QLabel("0.600")
-        self.speed_val_label.setStyleSheet("color: #38BDF8; font-weight: bold; font-size: 14px;")
+        self.speed_val_label.setObjectName("accentTitle")
         speed_slider_layout.addWidget(self.speed_val_label)
         speed_slider_layout.addStretch()
         speed_layout.addLayout(speed_slider_layout)
@@ -1528,7 +1597,7 @@ class G502ControlApp(QMainWindow):
         v_top = QHBoxLayout()
         v_top.addWidget(QLabel("Headset Volume:"))
         self.lbl_hs_vol = QLabel("56%")
-        self.lbl_hs_vol.setStyleSheet("color: #38BDF8; font-weight: bold; font-size: 15px;")
+        self.lbl_hs_vol.setObjectName("accentTitle")
         v_top.addWidget(self.lbl_hs_vol)
         v_top.addStretch()
         
@@ -1611,7 +1680,7 @@ class G502ControlApp(QMainWindow):
         m_top = QHBoxLayout()
         m_top.addWidget(QLabel("Mic Gain Level:"))
         self.lbl_mic_vol = QLabel("100%")
-        self.lbl_mic_vol.setStyleSheet("color: #38BDF8; font-weight: bold; font-size: 15px;")
+        self.lbl_mic_vol.setObjectName("accentTitle")
         m_top.addWidget(self.lbl_mic_vol)
         m_top.addStretch()
 
@@ -1636,7 +1705,7 @@ class G502ControlApp(QMainWindow):
         s_top = QHBoxLayout()
         s_top.addWidget(QLabel("Sidetone Feedback Volume:"))
         self.lbl_sidetone = QLabel("30%")
-        self.lbl_sidetone.setStyleSheet("color: #38BDF8; font-weight: bold;")
+        self.lbl_sidetone.setObjectName("accentTitle")
         s_top.addWidget(self.lbl_sidetone)
         s_top.addStretch()
         slayout.addLayout(s_top)
@@ -1656,7 +1725,7 @@ class G502ControlApp(QMainWindow):
         self.mic_meter.setRange(0, 100)
         self.mic_meter.setValue(45)
         self.mic_meter.setTextVisible(False)
-        self.mic_meter.setStyleSheet("QProgressBar::chunk { background-color: #34D399; }")
+        self.mic_meter.setObjectName("micMeter")
         meter_layout.addWidget(self.mic_meter)
         layout.addWidget(meter_group)
 
@@ -1761,7 +1830,7 @@ class G502ControlApp(QMainWindow):
         b_top = QHBoxLayout()
         b_top.addWidget(QLabel("Battery Charge Level:"))
         self.lbl_hs_battery_pct = QLabel("85% (Discharging)")
-        self.lbl_hs_battery_pct.setStyleSheet("color: #38BDF8; font-weight: bold; font-size: 16px;")
+        self.lbl_hs_battery_pct.setObjectName("accentTitle")
         b_top.addWidget(self.lbl_hs_battery_pct)
         b_top.addStretch()
 
@@ -1775,15 +1844,14 @@ class G502ControlApp(QMainWindow):
         self.bar_hs_battery = QProgressBar()
         self.bar_hs_battery.setRange(0, 100)
         self.bar_hs_battery.setValue(85)
-        self.bar_hs_battery.setStyleSheet("QProgressBar::chunk { background-color: #38BDF8; }")
         blayout.addWidget(self.bar_hs_battery)
 
         self.lbl_hs_mv = QLabel("Voltage: 3958 mV (Smoothed G HUB 5% steps)")
-        self.lbl_hs_mv.setStyleSheet("color: #94A3B8; font-size: 12px;")
+        self.lbl_hs_mv.setObjectName("subText")
         blayout.addWidget(self.lbl_hs_mv)
 
         note_label = QLabel("💡 Pressing the power button on your headset (or clicking above) speaks the remaining battery charge out loud.")
-        note_label.setStyleSheet("color: #34D399; font-size: 12px; font-weight: bold;")
+        note_label.setObjectName("accentTitle")
         blayout.addWidget(note_label)
 
         layout.addWidget(bat_group)
@@ -1799,7 +1867,7 @@ class G502ControlApp(QMainWindow):
             "• Status: ONLINE & Connected"
         )
         info_text.setFont(QFont("Segoe UI", 11))
-        info_text.setStyleSheet("color: #38BDF8;")
+        info_text.setObjectName("accentTitle")
         glayout.addWidget(info_text)
 
         layout.addWidget(grp)
