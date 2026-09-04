@@ -18,17 +18,18 @@ A zero-lag, native Linux control center for Logitech Gaming Gear featuring multi
 ### 🎧 Gaming Headset Studio (Logitech G733 & PipeWire / ALSA)
 - **Sound & Equalizer**: Live Master Headphone Volume slider, output mute toggle, 5-Band EQ sliders (60Hz, 250Hz, 1kHz, 4kHz, 12kHz), and EQ Presets (*Flat 1:1, FPS Gaming, Bass Boost, Cinematic*).
 - **Microphone Controls**: Live Mic Gain level slider, instant Mute/Unmute button, Hardware Sidetone Level slider (to naturally hear your own voice), and Live Mic Test Level bar.
-- **RGB Lightstrip Effects**: OpenRGB color picker for G733 front lightstrips, static colors, breathing pulse, spectrum cycle, and quick color palettes.
+- **RGB Lightstrip Effects**: Targeted HID++ 2.0 RGB controller for G733 front lightstrips, static colors, breathing pulse, spectrum cycle, stealth OFF, and quick color palettes.
+- **Wireless Battery & Spoken Announcements**: Live voltage & smoothed G HUB 5% step battery level indicator. Hear remaining charge percentage spoken out loud (`spd-say`/`espeak`) by pressing the physical headset power button, clicking the header badge, or selecting from the tray menu.
 
 ### ⚙️ Settings Studio & 📌 System Tray Integration
 - **Gear Icon Settings Page (⚙)**:
-  - **Themes & Appearance**: Dark Void (Default), Midnight Cyan, Cyberpunk Neon, Slate Dark.
+  - **18 Themes & Appearance**: *Dark Void (Default), Midnight Cyan, Cyberpunk Neon, Slate Dark, Nordic Frost, Dracula Dark, Emerald Forest, Sunset Crimson, Tokyo Night, Solar Gold, Synthwave 80s, Matrix Hacker, Deep Amethyst, Oceanic Abyss, Rose Gold Luxe, Vaporwave Pastel, Monochrome Stealth, Light Pristine*.
   - **System Health Audit / Diagnostics**: Live check of `g502-macros.service`, `ratbagd`, PipeWire audio daemon, OpenRGB, and input nodes.
   - **System Tray Options**: Minimize window to system tray on close when macro daemon is active.
   - **About & Repository**: Direct link to GitHub repository (`https://github.com/gaxkalik/Logitech-Linux-App`).
 - **📌 System Tray Menu (`QSystemTrayIcon`)**:
   - Keep background macro service active when main window is closed.
-  - Quick actions: Open Control Center, Mute/Unmute Headset Mic, Toggle Macro Service, Settings, Quit.
+  - Quick actions: Open Control Center, Hear Battery Charge %, Mute/Unmute Headset Mic, Toggle Macro Service, Settings, Quit.
 - **☰ Hamburger Menu**: Quick device switcher to toggle between **🖱️ Logitech G502 Mouse** and **🎧 Logitech G733 Headset**.
 
 ---

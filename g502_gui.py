@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 """
-AGY Logitech Linux Control Suite & Macro Studio v2.4
+AGY Logitech Linux Control Suite & Macro Studio v2.5
 --------------------------------------------------
 A unified, feature-packed Linux control application for Logitech Gaming Gear:
   - Logitech Gaming Mouse (G502 Hero/LIGHTSPEED, etc.) via libratbagd & Piper interactive button macro customization.
   - Logitech Gaming Headset (G733 Wireless) via direct HID++ 2.0 driver, PipeWire/ALSA & OpenRGB.
   - Targeted G733 RGB Lightstrip Control (Feature 0x8070 over hidraw).
   - Smooth, Hysteresis-Filtered Battery Indication (5% G HUB steps, no voltage bouncing).
-  - Spoken Battery Percentage ON Headset Power Button press (evdev hardware listener) & GUI/Tray action.
+  - Physical Power Button Press Listener for G733 (unsolicited HID++ & evdev hardware reports).
+  - Expanded 11 Custom Visual Themes (Dark Void, Midnight Cyan, Cyberpunk Neon, Slate Dark, Nord Frost, Dracula, Emerald Forest, Sunset Crimson, Tokyo Night, Solar Gold, Light Pristine).
   - System Tray Integration (QSystemTrayIcon) with minimize-on-close behavior.
   - Comprehensive Settings Page (⚙ Gear icon) with Appearance themes, live System Diagnostics, and GitHub link.
   - Hamburger Menu (☰) for quick device switching and app controls.
@@ -78,6 +79,132 @@ THEMES = {
         "text_main": "#F8FAFC",
         "text_sub": "#94A3B8",
         "border": "#334155"
+    },
+    "Nordic Frost": {
+        "bg_main": "#2E3440",
+        "bg_card": "#3B4252",
+        "bg_input": "#4C566A",
+        "accent": "#88C0D0",
+        "text_main": "#ECEFF4",
+        "text_sub": "#D8DEE9",
+        "border": "#434C5E"
+    },
+    "Dracula Dark": {
+        "bg_main": "#282A36",
+        "bg_card": "#343746",
+        "bg_input": "#44475A",
+        "accent": "#FF79C6",
+        "text_main": "#F8F8F2",
+        "text_sub": "#BD93F9",
+        "border": "#6272A4"
+    },
+    "Emerald Forest": {
+        "bg_main": "#061412",
+        "bg_card": "#0C2320",
+        "bg_input": "#143833",
+        "accent": "#34D399",
+        "text_main": "#ECFDF5",
+        "text_sub": "#6EE7B7",
+        "border": "#164E63"
+    },
+    "Sunset Crimson": {
+        "bg_main": "#180A0A",
+        "bg_card": "#2A1212",
+        "bg_input": "#3F1B1B",
+        "accent": "#FB7185",
+        "text_main": "#FFF1F2",
+        "text_sub": "#FDA4AF",
+        "border": "#881337"
+    },
+    "Tokyo Night": {
+        "bg_main": "#1A1B26",
+        "bg_card": "#24283B",
+        "bg_input": "#414868",
+        "accent": "#7AA2F7",
+        "text_main": "#A9B1D6",
+        "text_sub": "#7DCFFF",
+        "border": "#565F89"
+    },
+    "Solar Gold": {
+        "bg_main": "#121212",
+        "bg_card": "#1E1E1E",
+        "bg_input": "#2C2C2C",
+        "accent": "#FBBF24",
+        "text_main": "#FEF3C7",
+        "text_sub": "#FCD34D",
+        "border": "#383838"
+    },
+    "Synthwave 80s": {
+        "bg_main": "#120A2A",
+        "bg_card": "#1B103C",
+        "bg_input": "#2D1B5E",
+        "accent": "#FF71CE",
+        "text_main": "#FDFEFE",
+        "text_sub": "#01CDFE",
+        "border": "#432888"
+    },
+    "Matrix Hacker": {
+        "bg_main": "#0D1117",
+        "bg_card": "#161B22",
+        "bg_input": "#21262D",
+        "accent": "#00FF66",
+        "text_main": "#E6EDF3",
+        "text_sub": "#7EE787",
+        "border": "#30363D"
+    },
+    "Deep Amethyst": {
+        "bg_main": "#150C22",
+        "bg_card": "#221435",
+        "bg_input": "#321E4B",
+        "accent": "#C084FC",
+        "text_main": "#F3E8FF",
+        "text_sub": "#A855F7",
+        "border": "#4C2875"
+    },
+    "Oceanic Abyss": {
+        "bg_main": "#050E18",
+        "bg_card": "#0B192C",
+        "bg_input": "#1E3A8A",
+        "accent": "#00F5D4",
+        "text_main": "#E0F2FE",
+        "text_sub": "#38BDF8",
+        "border": "#1E293B"
+    },
+    "Rose Gold Luxe": {
+        "bg_main": "#18181B",
+        "bg_card": "#27272A",
+        "bg_input": "#3F3F46",
+        "accent": "#FB7185",
+        "text_main": "#FAFAFA",
+        "text_sub": "#F472B6",
+        "border": "#52525B"
+    },
+    "Vaporwave Pastel": {
+        "bg_main": "#1E1B2E",
+        "bg_card": "#28243D",
+        "bg_input": "#3A3556",
+        "accent": "#F472B6",
+        "text_main": "#F3E8FF",
+        "text_sub": "#A78BFA",
+        "border": "#4C456B"
+    },
+    "Monochrome Stealth": {
+        "bg_main": "#121212",
+        "bg_card": "#1E1E1E",
+        "bg_input": "#2A2A2A",
+        "accent": "#FFFFFF",
+        "text_main": "#FAFAFA",
+        "text_sub": "#A1A1AA",
+        "border": "#333333"
+    },
+    "Light Pristine": {
+        "bg_main": "#F8FAFC",
+        "bg_card": "#FFFFFF",
+        "bg_input": "#E2E8F0",
+        "accent": "#0284C7",
+        "text_main": "#0F172A",
+        "text_sub": "#475569",
+        "border": "#CBD5E1"
     }
 }
 
@@ -354,6 +481,7 @@ CUSTOM_KEYS = [
 # ------------------ Native Logitech G733 Hardware Driver & Battery Filter ------------------
 
 _last_battery_pct = None
+_is_app_querying = False
 
 def find_g733_hidraw():
     for h in glob.glob('/sys/class/hidraw/hidraw*'):
@@ -369,10 +497,12 @@ def find_g733_hidraw():
     return None
 
 def get_g733_battery_info():
-    global _last_battery_pct
+    global _last_battery_pct, _is_app_querying
     dev_path = find_g733_hidraw()
     if not dev_path:
         return None, "Disconnected", 0
+    
+    _is_app_querying = True
     try:
         fd = os.open(dev_path, os.O_RDWR | os.O_NONBLOCK)
         req = bytes([0x11, 0xFF, 0x08, 0x00] + [0x00]*16)
@@ -391,6 +521,8 @@ def get_g733_battery_info():
             time.sleep(0.005)
 
         os.close(fd)
+        _is_app_querying = False
+
         if res:
             mV = (res[4] << 8) | res[5]
             status_code = res[6]
@@ -438,6 +570,7 @@ def get_g733_battery_info():
 
             return _last_battery_pct, status_str, mV
     except Exception as e:
+        _is_app_querying = False
         logging.error(f"Error querying G733 battery: {e}")
     return None, "Unknown", 0
 
@@ -460,19 +593,24 @@ def set_g733_rgb(r, g, b, mode=1):
         return False
 
 def speak_text(text):
-    try:
-        subprocess.Popen(['spd-say', text], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    except Exception:
+    def _speak():
         try:
-            subprocess.Popen(['espeak', text], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            res = subprocess.run(['spd-say', text], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=2)
+            if res.returncode != 0:
+                subprocess.run(['espeak', text], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=2)
         except Exception:
-            pass
+            try:
+                subprocess.run(['espeak', text], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=2)
+            except Exception:
+                pass
+    threading.Thread(target=_speak, daemon=True).start()
 
 
 class G733PowerButtonListenerThread(QThread):
     speak_battery_signal = pyqtSignal()
 
     def run(self):
+        hidraw_path = find_g733_hidraw()
         evdev_devs = []
         for p in evdev.list_devices():
             try:
@@ -482,29 +620,57 @@ class G733PowerButtonListenerThread(QThread):
             except Exception:
                 pass
 
-        if not evdev_devs:
-            return
-
-        dev_map = {d.fd: d for d in evdev_devs}
         epoll = select.epoll()
-        for fd in dev_map.keys():
-            epoll.register(fd, select.EPOLLIN)
+        dev_map = {}
+        for d in evdev_devs:
+            epoll.register(d.fd, select.EPOLLIN)
+            dev_map[d.fd] = d  # Store actual InputDevice object
+
+        hidraw_fd = None
+        if hidraw_path:
+            try:
+                hidraw_fd = os.open(hidraw_path, os.O_RDWR | os.O_NONBLOCK)
+                epoll.register(hidraw_fd, select.EPOLLIN)
+                dev_map[hidraw_fd] = 'hidraw'
+            except Exception:
+                pass
 
         last_speak_time = 0
         while not self.isInterruptionRequested():
             try:
                 events = epoll.poll(0.2)
                 for fd, event in events:
-                    dev = dev_map[fd]
-                    for ev in dev.read():
-                        if ev.type == evdev.ecodes.EV_KEY and ev.value == 1:
-                            # Hardware keypress detected on headset!
-                            if time.time() - last_speak_time > 1.5:
-                                last_speak_time = time.time()
-                                self.speak_battery_signal.emit()
+                    if dev_map.get(fd) == 'hidraw':
+                        try:
+                            data = os.read(hidraw_fd, 64)
+                            # Ignore 5-second automatic battery telemetry reports (11ff0800...)
+                            if data and not _is_app_querying:
+                                is_telemetry = (len(data) >= 4 and data[0] == 0x11 and data[1] == 0xFF and data[2] == 0x08 and data[3] == 0x00)
+                                if not is_telemetry:
+                                    if time.time() - last_speak_time > 2.0:
+                                        last_speak_time = time.time()
+                                        self.speak_battery_signal.emit()
+                        except Exception:
+                            pass
+                    elif isinstance(dev_map.get(fd), evdev.InputDevice):
+                        try:
+                            dev = dev_map[fd]
+                            for ev in dev.read():
+                                if ev.type == evdev.ecodes.EV_KEY and ev.value == 1:
+                                    if time.time() - last_speak_time > 2.0:
+                                        last_speak_time = time.time()
+                                        self.speak_battery_signal.emit()
+                        except Exception:
+                            pass
             except Exception:
                 pass
             time.sleep(0.05)
+
+        if hidraw_fd:
+            try:
+                os.close(hidraw_fd)
+            except Exception:
+                pass
 
 
 def load_app_settings():
@@ -593,7 +759,7 @@ class SettingsDialog(QDialog):
         grp = QGroupBox("Theme Selection")
         glayout = QVBoxLayout(grp)
 
-        glayout.addWidget(QLabel("Select Visual Accent Theme:"))
+        glayout.addWidget(QLabel("Select Visual Accent Theme (11 Themes Available):"))
         self.combo_theme = QComboBox()
         for tname in THEMES.keys():
             self.combo_theme.addItem(tname)
@@ -840,7 +1006,7 @@ class G502ControlApp(QMainWindow):
         # System Tray Integration
         self.init_system_tray()
 
-        # Start G733 Power Button Listener Thread (Listens specifically for EVDEV hardware keypress events)
+        # Start G733 Power Button Press Listener Thread
         self.listener_thread = G733PowerButtonListenerThread()
         self.listener_thread.speak_battery_signal.connect(self.speak_current_battery)
         self.listener_thread.start()
@@ -873,8 +1039,16 @@ class G502ControlApp(QMainWindow):
         pct, status_str, mV = get_g733_battery_info()
         if pct is not None:
             speak_text(f"Battery {pct} percent")
+            if hasattr(self, 'lbl_hs_battery_pct'):
+                self.lbl_hs_battery_pct.setText(f"{pct}% ({status_str}) — 🔊 Announced!")
+            if hasattr(self, 'lbl_header_battery'):
+                self.lbl_header_battery.setText(f"🔊 G733: {pct}% ({status_str.split()[0]})")
+            logging.info(f"Spoken battery announcement triggered: {pct}%")
         else:
             speak_text("Headset disconnected")
+            if hasattr(self, 'lbl_hs_battery_pct'):
+                self.lbl_hs_battery_pct.setText("Disconnected")
+            logging.warning("Spoken battery check requested, but G733 headset is offline")
 
     # ------------------ System Tray Integration ------------------
     def init_system_tray(self):
