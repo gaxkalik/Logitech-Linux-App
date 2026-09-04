@@ -661,6 +661,25 @@ def set_g733_rgb(r, g, b, mode=1):
         logging.error(f"Error setting G733 RGB: {ex}")
         return False
 
+def set_g733_sidetone(val):
+    """Sets G733 native hardware sidetone volume percentage (0 - 100%)."""
+    dev_path = find_g733_hidraw()
+    if not dev_path:
+        logging.warning("Cannot set G733 sidetone: hidraw device not found")
+        return False
+    try:
+        # Scale 0-100% to G733 hardware firmware max range (0 - 75 / 0x4B)
+        hw_val = int((val / 100.0) * 75)
+        fd = os.open(dev_path, os.O_RDWR | os.O_NONBLOCK)
+        cmd = bytes([0x11, 0xFF, 0x07, 0x10, hw_val] + [0x00]*15)
+        os.write(fd, cmd)
+        os.close(fd)
+        logging.info(f"Targeted G733 Native Hardware Sidetone set to {val}% (HW Byte: {hw_val})")
+        return True
+    except Exception as ex:
+        logging.error(f"Error setting G733 Sidetone: {ex}")
+        return False
+
 def speak_text(text):
     def _speak():
         try:
@@ -740,6 +759,31 @@ class G733PowerButtonListenerThread(QThread):
                 os.close(hidraw_fd)
             except Exception:
                 pass
+
+
+class MicMeterThread(QThread):
+    level_signal = pyqtSignal(int)
+
+    def run(self):
+        try:
+            p = subprocess.Popen(
+                ['parec', '--channels=1', '--rate=16000', '--format=s16le', '--raw'],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.DEVNULL
+            )
+            while not self.isInterruptionRequested():
+                raw = p.stdout.read(1600)  # 50ms chunk
+                if raw:
+                    num_samples = len(raw) // 2
+                    samples = struct.unpack(f'<{num_samples}h', raw)
+                    peak = max(abs(s) for s in samples) if samples else 0
+                    pct = min(100, int((peak / 16000.0) * 100))
+                    self.level_signal.emit(pct)
+                else:
+                    time.sleep(0.05)
+            p.terminate()
+        except Exception as e:
+            logging.error(f"Error in MicMeterThread: {e}")
 
 
 def load_app_settings():
@@ -1080,11 +1124,20 @@ class G502ControlApp(QMainWindow):
         self.listener_thread.speak_battery_signal.connect(self.speak_current_battery)
         self.listener_thread.start()
 
+        # Start Live Microphone Level Meter Thread
+        self.mic_meter_thread = MicMeterThread()
+        self.mic_meter_thread.level_signal.connect(self.update_mic_meter_level)
+        self.mic_meter_thread.start()
+
         # Status & Battery Refresh Timer (Updates UI silently, NEVER speaks)
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.periodic_refresh)
         self.timer.start(5000)
         self.periodic_refresh()
+
+    def update_mic_meter_level(self, level):
+        if hasattr(self, 'mic_meter'):
+            self.mic_meter.setValue(level)
 
     def periodic_refresh(self):
         self.update_daemon_status()
@@ -1750,7 +1803,7 @@ class G502ControlApp(QMainWindow):
 
     def on_sidetone_changed(self, val):
         self.lbl_sidetone.setText(f"{val}%")
-        subprocess.run(['amixer', 'sset', 'Mic', f"{val}%"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        set_g733_sidetone(val)
 
     # ------------------ Targeted Headset RGB Tab ------------------
     def create_headset_rgb_tab(self):
