@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """
-AGY Logitech Linux Control Suite & Macro Studio v2.3
+AGY Logitech Linux Control Suite & Macro Studio v2.4
 --------------------------------------------------
 A unified, feature-packed Linux control application for Logitech Gaming Gear:
   - Logitech Gaming Mouse (G502 Hero/LIGHTSPEED, etc.) via libratbagd & Piper interactive button macro customization.
   - Logitech Gaming Headset (G733 Wireless) via direct HID++ 2.0 driver, PipeWire/ALSA & OpenRGB.
   - Targeted G733 RGB Lightstrip Control (Feature 0x8070 over hidraw).
-  - Smooth, Hysteresis-Filtered Battery Indication (5% steps, no voltage bouncing).
-  - Voice Announcement of Battery Percentage ONLY on explicit user action (button click / headset key). No 5s background speech.
+  - Smooth, Hysteresis-Filtered Battery Indication (5% G HUB steps, no voltage bouncing).
+  - Spoken Battery Percentage ON Headset Power Button press (evdev hardware listener) & GUI/Tray action.
   - System Tray Integration (QSystemTrayIcon) with minimize-on-close behavior.
   - Comprehensive Settings Page (⚙ Gear icon) with Appearance themes, live System Diagnostics, and GitHub link.
   - Hamburger Menu (☰) for quick device switching and app controls.
@@ -20,6 +20,9 @@ import glob
 import subprocess
 import json
 import logging
+
+import evdev
+import select
 
 from PyQt6.QtCore import Qt, QTimer, QThread, pyqtSignal, QSize, QUrl
 from PyQt6.QtGui import QFont, QIcon, QColor, QPalette, QCursor, QPixmap, QDesktopServices, QAction
@@ -466,6 +469,44 @@ def speak_text(text):
             pass
 
 
+class G733PowerButtonListenerThread(QThread):
+    speak_battery_signal = pyqtSignal()
+
+    def run(self):
+        evdev_devs = []
+        for p in evdev.list_devices():
+            try:
+                d = evdev.InputDevice(p)
+                if 'G733' in d.name:
+                    evdev_devs.append(d)
+            except Exception:
+                pass
+
+        if not evdev_devs:
+            return
+
+        dev_map = {d.fd: d for d in evdev_devs}
+        epoll = select.epoll()
+        for fd in dev_map.keys():
+            epoll.register(fd, select.EPOLLIN)
+
+        last_speak_time = 0
+        while not self.isInterruptionRequested():
+            try:
+                events = epoll.poll(0.2)
+                for fd, event in events:
+                    dev = dev_map[fd]
+                    for ev in dev.read():
+                        if ev.type == evdev.ecodes.EV_KEY and ev.value == 1:
+                            # Hardware keypress detected on headset!
+                            if time.time() - last_speak_time > 1.5:
+                                last_speak_time = time.time()
+                                self.speak_battery_signal.emit()
+            except Exception:
+                pass
+            time.sleep(0.05)
+
+
 def load_app_settings():
     if os.path.exists(SETTINGS_PATH):
         try:
@@ -799,6 +840,11 @@ class G502ControlApp(QMainWindow):
         # System Tray Integration
         self.init_system_tray()
 
+        # Start G733 Power Button Listener Thread (Listens specifically for EVDEV hardware keypress events)
+        self.listener_thread = G733PowerButtonListenerThread()
+        self.listener_thread.speak_battery_signal.connect(self.speak_current_battery)
+        self.listener_thread.start()
+
         # Status & Battery Refresh Timer (Updates UI silently, NEVER speaks)
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.periodic_refresh)
@@ -823,7 +869,7 @@ class G502ControlApp(QMainWindow):
             self.lbl_header_battery.setText("🔋 G733: Offline")
 
     def speak_current_battery(self):
-        """Called ONLY when user clicks battery badge / button or menu item."""
+        """Speaks the current battery percentage out loud."""
         pct, status_str, mV = get_g733_battery_info()
         if pct is not None:
             speak_text(f"Battery {pct} percent")
@@ -900,6 +946,9 @@ class G502ControlApp(QMainWindow):
                     3000
                 )
         else:
+            if hasattr(self, 'listener_thread'):
+                self.listener_thread.requestInterruption()
+                self.listener_thread.wait(500)
             event.accept()
 
     def show_hamburger_menu(self):
@@ -1559,7 +1608,7 @@ class G502ControlApp(QMainWindow):
         self.lbl_hs_mv.setStyleSheet("color: #94A3B8; font-size: 12px;")
         blayout.addWidget(self.lbl_hs_mv)
 
-        note_label = QLabel("💡 Voice announcements are played ONLY when you click the Hear Battery % button or press the headset power button action.")
+        note_label = QLabel("💡 Pressing the power button on your headset (or clicking above) speaks the remaining battery charge out loud.")
         note_label.setStyleSheet("color: #34D399; font-size: 12px; font-weight: bold;")
         blayout.addWidget(note_label)
 
