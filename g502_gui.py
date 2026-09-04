@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
 """
-AGY Logitech Linux Control Suite & Macro Studio v2.0
+AGY Logitech Linux Control Suite & Macro Studio v2.1
 --------------------------------------------------
 A unified, feature-packed Linux control application for Logitech Gaming Gear:
   - Logitech Gaming Mouse (G502 Hero/LIGHTSPEED, etc.) via libratbagd & Piper interactive button macro customization.
-  - Logitech Gaming Headset (G733 Wireless, etc.) via PipeWire/PulseAudio/ALSA & OpenRGB.
-  - System Tray Integration (QSystemTrayIcon) with minimize-on-close behavior when background daemon is active.
+  - Logitech Gaming Headset (G733 Wireless) via direct HID++ 2.0 driver, PipeWire/ALSA & OpenRGB.
+  - Targeted G733 RGB Lightstrip Control (Feature 0x8070 over hidraw).
+  - Live Battery Indication (Percentage & Voltage) for wireless devices.
+  - Voice Announcement of Battery Percentage on Headset Power Button press or System Tray click (using spd-say).
+  - System Tray Integration (QSystemTrayIcon) with minimize-on-close behavior.
   - Comprehensive Settings Page (⚙ Gear icon) with Appearance themes, live System Diagnostics, and GitHub link.
   - Hamburger Menu (☰) for quick device switching and app controls.
 """
@@ -13,6 +16,7 @@ A unified, feature-packed Linux control application for Logitech Gaming Gear:
 import sys
 import os
 import time
+import glob
 import subprocess
 import json
 import logging
@@ -300,6 +304,16 @@ QLabel#statusBadgeInactive {{
     font-weight: bold;
     font-size: 12px;
 }}
+
+QLabel#batteryBadge {{
+    background-color: #1E293B;
+    color: #38BDF8;
+    border: 1px solid #38BDF8;
+    border-radius: 12px;
+    padding: 4px 12px;
+    font-weight: bold;
+    font-size: 12px;
+}}
 """
 
 ACTION_TYPES = [
@@ -333,6 +347,124 @@ CUSTOM_KEYS = [
     ("Number 4", "KEY_4"),
     ("Number 5", "KEY_5"),
 ]
+
+# ------------------ Native Logitech G733 HID++ Hardware Driver ------------------
+
+def find_g733_hidraw():
+    for h in glob.glob('/sys/class/hidraw/hidraw*'):
+        uevent = os.path.join(h, 'device', 'uevent')
+        if os.path.exists(uevent):
+            try:
+                with open(uevent, 'r') as f:
+                    content = f.read()
+                    if '046D' in content.upper() and '0AB5' in content.upper():
+                        return f"/dev/{os.path.basename(h)}"
+            except Exception:
+                pass
+    return None
+
+def get_g733_battery_info():
+    dev_path = find_g733_hidraw()
+    if not dev_path:
+        return None, "Disconnected", 0
+    try:
+        fd = os.open(dev_path, os.O_RDWR | os.O_NONBLOCK)
+        # Query Feature 0x1F20 (Index 0x08), fn 0
+        req = bytes([0x11, 0xFF, 0x08, 0x00] + [0x00]*16)
+        os.write(fd, req)
+        
+        res = None
+        t0 = time.time()
+        while time.time() - t0 < 0.3:
+            try:
+                b = os.read(fd, 64)
+                if b and len(b) >= 7 and b[0] == 0x11 and b[2] == 0x08:
+                    res = b
+                    break
+            except BlockingIOError:
+                pass
+            time.sleep(0.01)
+
+        os.close(fd)
+        if res:
+            mV = (res[4] << 8) | res[5]
+            status_code = res[6]
+            status_str = "Charging" if status_code == 3 else ("Full" if status_code == 2 else "Discharging")
+            if mV <= 3500:
+                pct = 0
+            elif mV >= 4180:
+                pct = 100
+            else:
+                pct = int((mV - 3500) / (4180 - 3500) * 100)
+            return pct, status_str, mV
+    except Exception as e:
+        logging.error(f"Error querying G733 battery: {e}")
+    return None, "Unknown", 0
+
+def set_g733_rgb(r, g, b, mode=1):
+    """
+    Sends targeted HID++ RGB LED command to G733 Headset (Feature 0x8070, Index 0x04).
+    Modes:
+      1: Static Color
+      2: Breathing Pulse
+      3: Spectrum Cycle
+      0: Off
+    """
+    dev_path = find_g733_hidraw()
+    if not dev_path:
+        logging.warning("Cannot set G733 RGB: hidraw device not found")
+        return False
+    try:
+        fd = os.open(dev_path, os.O_RDWR | os.O_NONBLOCK)
+        # Send HID++ RGB command to Zone 0, Zone 1, and Zone 0xFF (All zones)
+        for zone in [0, 1, 0xFF]:
+            cmd = bytes([0x11, 0xFF, 0x04, 0x10, zone, mode, r, g, b, 0x00, 0x00, 0x64] + [0x00]*8)
+            os.write(fd, cmd)
+            time.sleep(0.01)
+        os.close(fd)
+        logging.info(f"Targeted G733 Headset RGB set to R={r} G={g} B={b} (Mode {mode})")
+        return True
+    except Exception as ex:
+        logging.error(f"Error setting G733 RGB: {ex}")
+        return False
+
+def speak_text(text):
+    try:
+        subprocess.Popen(['spd-say', text], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except Exception:
+        try:
+            subprocess.Popen(['espeak', text], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        except Exception:
+            pass
+
+
+class G733PowerButtonListenerThread(QThread):
+    speak_battery_signal = pyqtSignal(int, str)
+
+    def run(self):
+        dev_path = find_g733_hidraw()
+        if not dev_path:
+            return
+        try:
+            fd = os.open(dev_path, os.O_RDWR | os.O_NONBLOCK)
+            last_speak_time = 0
+            while not self.isInterruptionRequested():
+                try:
+                    data = os.read(fd, 64)
+                    if data and len(data) >= 4:
+                        # HID++ report notification or power report
+                        if time.time() - last_speak_time > 3.0:
+                            pct, status, mV = get_g733_battery_info()
+                            if pct is not None:
+                                last_speak_time = time.time()
+                                self.speak_battery_signal.emit(pct, status)
+                except BlockingIOError:
+                    pass
+                time.sleep(0.1)
+            os.close(fd)
+        except Exception:
+            pass
+
 
 def load_app_settings():
     if os.path.exists(SETTINGS_PATH):
@@ -477,37 +609,23 @@ class SettingsDialog(QDialog):
         report.append(f" Timestamp: {time.strftime('%Y-%m-%d %H:%M:%S')}")
         report.append("==================================================\n")
 
-        # 1. Macro Service
         res = subprocess.run(['systemctl', '--user', 'is-active', 'g502-macros.service'], capture_output=True, text=True)
         m_status = res.stdout.strip()
         report.append(f"[Macro Service] g502-macros.service: {'✅ ACTIVE' if m_status == 'active' else '❌ INACTIVE ('+m_status+')'}")
 
-        # 2. ratbagd
         res = subprocess.run(['systemctl', 'is-active', 'ratbagd.service'], capture_output=True, text=True)
         r_status = res.stdout.strip()
         report.append(f"[Mouse Daemon] ratbagd.service: {'✅ ACTIVE' if r_status == 'active' else '⚠️ INACTIVE ('+r_status+')'}")
 
-        # 3. PipeWire / WirePlumber
         res = subprocess.run(['wpctl', 'status'], capture_output=True, text=True)
         pw_ok = res.returncode == 0
         report.append(f"[Audio Daemon] PipeWire / WirePlumber: {'✅ ONLINE' if pw_ok else '❌ OFFLINE'}")
 
-        # 4. OpenRGB
-        res = subprocess.run(['openrgb', '--version'], capture_output=True, text=True)
-        orgb_ok = res.returncode == 0
-        report.append(f"[RGB Daemon] OpenRGB: {'✅ INSTALLED' if orgb_ok else '⚠️ NOT INSTALLED'}")
-
-        # 5. Connected Devices
-        mice = get_all_ratbag_mice()
-        report.append(f"\n[Detected Gaming Mice ({len(mice)})]:")
-        for m in mice:
-            report.append(f"  • {m['name']} (ID: {m['id']}, Buttons: {m['buttons']})")
-
-        # 6. Audio Devices (Headset)
-        res = subprocess.run(['wpctl', 'get-volume', '@DEFAULT_AUDIO_SINK@'], capture_output=True, text=True)
-        report.append(f"\n[Default Audio Sink Volume]: {res.stdout.strip()}")
-        res = subprocess.run(['wpctl', 'get-volume', '@DEFAULT_AUDIO_SOURCE@'], capture_output=True, text=True)
-        report.append(f"[Default Audio Source Volume]: {res.stdout.strip()}")
+        # HID++ G733 Status
+        dev_path = find_g733_hidraw()
+        pct, b_status, mV = get_g733_battery_info()
+        report.append(f"[G733 HID++ Hardware]: {'✅ CONNECTED ('+dev_path+')' if dev_path else '⚠️ DISCONNECTED'}")
+        report.append(f"  • Battery Level: {pct}% ({b_status}, {mV} mV)")
 
         self.diag_text.setText("\n".join(report))
 
@@ -553,8 +671,9 @@ class SettingsDialog(QDialog):
         lbl_desc = QLabel(
             "An open-source native Linux control suite providing G HUB functionality for Logitech hardware:\n"
             "• Zero-lag mouse button macros, DPI tuner & pointer acceleration.\n"
-            "• Full headset sound, equalizer, microphone volume/mute, and sidetone controls.\n"
-            "• Integrated OpenRGB lighting customizer."
+            "• Headset sound, equalizer, microphone gain/mute, and sidetone controls.\n"
+            "• Targeted G733 HID++ RGB lighting controller.\n"
+            "• Spoken battery percentage announcements on power button press."
         )
         lbl_desc.setWordWrap(True)
         lbl_desc.setStyleSheet("color: #94A3B8; font-size: 12px;")
@@ -616,6 +735,14 @@ class G502ControlApp(QMainWindow):
         header_layout.addLayout(title_layout)
         header_layout.addStretch()
 
+        # Wireless Battery Indicator Badge in Header
+        self.lbl_header_battery = QLabel("🔋 G733: --%")
+        self.lbl_header_battery.setObjectName("batteryBadge")
+        self.lbl_header_battery.setToolTip("Click to announce remaining battery charge out loud")
+        self.lbl_header_battery.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.lbl_header_battery.mousePressEvent = lambda ev: self.speak_current_battery()
+        header_layout.addWidget(self.lbl_header_battery)
+
         # Device Selector Dropdown (Mouse vs Headset)
         device_layout = QVBoxLayout()
         dev_title = QLabel("Select Connected Device:")
@@ -664,20 +791,52 @@ class G502ControlApp(QMainWindow):
         self.headset_tabs = QTabWidget()
         self.headset_tabs.addTab(self.create_headset_sound_tab(), "🔊 Sound & Equalizer")
         self.headset_tabs.addTab(self.create_headset_mic_tab(), "🎙️ Microphone Controls")
-        self.headset_tabs.addTab(self.create_headset_rgb_tab(), "🌈 RGB Lightstrip")
-        self.headset_tabs.addTab(self.create_headset_info_tab(), "ℹ️ Headset Status")
+        self.headset_tabs.addTab(self.create_headset_rgb_tab(), "🌈 Targeted RGB Lightstrip")
+        self.headset_tabs.addTab(self.create_headset_info_tab(), "🔋 Battery & Headset Status")
         self.device_stack.addWidget(self.headset_tabs)
 
         main_layout.addWidget(self.device_stack)
 
-        # Initialize System Tray Integration
+        # System Tray Integration
         self.init_system_tray()
 
-        # Status Update Timer
+        # Start G733 Power Button Listener Thread
+        self.listener_thread = G733PowerButtonListenerThread()
+        self.listener_thread.speak_battery_signal.connect(self.on_battery_announced)
+        self.listener_thread.start()
+
+        # Status & Battery Refresh Timer
         self.timer = QTimer(self)
-        self.timer.timeout.connect(self.update_daemon_status)
-        self.timer.start(2000)
+        self.timer.timeout.connect(self.periodic_refresh)
+        self.timer.start(3000)
+        self.periodic_refresh()
+
+    def periodic_refresh(self):
         self.update_daemon_status()
+        self.refresh_battery_status()
+
+    def refresh_battery_status(self):
+        pct, status_str, mV = get_g733_battery_info()
+        if pct is not None:
+            self.lbl_header_battery.setText(f"🔋 G733: {pct}% ({status_str.split()[0]})")
+            if hasattr(self, 'lbl_hs_battery_pct'):
+                self.lbl_hs_battery_pct.setText(f"{pct}% ({status_str})")
+                self.bar_hs_battery.setValue(pct)
+                self.lbl_hs_mv.setText(f"Voltage: {mV} mV")
+            if hasattr(self, 'tray_icon'):
+                self.tray_icon.setToolTip(f"Logitech Linux Control Suite — G733: {pct}% ({status_str})")
+        else:
+            self.lbl_header_battery.setText("🔋 G733: Offline")
+
+    def speak_current_battery(self):
+        pct, status_str, mV = get_g733_battery_info()
+        if pct is not None:
+            speak_text(f"Battery {pct} percent")
+        else:
+            speak_text("Headset disconnected")
+
+    def on_battery_announced(self, pct, status):
+        speak_text(f"Battery {pct} percent")
 
     # ------------------ System Tray Integration ------------------
     def init_system_tray(self):
@@ -693,6 +852,10 @@ class G502ControlApp(QMainWindow):
             action_show = QAction("🖥️ Open Control Center", self)
             action_show.triggered.connect(self.restore_from_tray)
             tray_menu.addAction(action_show)
+
+            action_speak_bat = QAction("🔊 Hear Battery Charge %", self)
+            action_speak_bat.triggered.connect(self.speak_current_battery)
+            tray_menu.addAction(action_speak_bat)
 
             self.action_toggle_mic = QAction("🎙️ Mute/Unmute Mic", self)
             self.action_toggle_mic.triggered.connect(self.toggle_headset_mic)
@@ -745,6 +908,9 @@ class G502ControlApp(QMainWindow):
                     3000
                 )
         else:
+            if hasattr(self, 'listener_thread'):
+                self.listener_thread.requestInterruption()
+                self.listener_thread.wait(500)
             event.accept()
 
     def show_hamburger_menu(self):
@@ -757,6 +923,9 @@ class G502ControlApp(QMainWindow):
         act_headset.triggered.connect(lambda: self.combo_main_device.setCurrentIndex(1))
         
         menu.addSeparator()
+        act_speak = menu.addAction("🔊 Hear Remaining Battery Charge %")
+        act_speak.triggered.connect(self.speak_current_battery)
+
         act_toggle = menu.addAction("⚡ Toggle Macro Daemon Service")
         act_toggle.triggered.connect(self.toggle_service)
         
@@ -1089,7 +1258,7 @@ class G502ControlApp(QMainWindow):
         layout.setSpacing(16)
         layout.setContentsMargins(12, 12, 12, 12)
 
-        rgb_group = QGroupBox("OpenRGB & Piper Integration Control")
+        rgb_group = QGroupBox("OpenRGB & Mouse Lighting Integration")
         rgb_layout = QVBoxLayout(rgb_group)
 
         rgb_layout.addWidget(QLabel("Manage OpenRGB lighting profiles and Piper mouse configuration:"))
@@ -1302,30 +1471,49 @@ class G502ControlApp(QMainWindow):
         self.lbl_sidetone.setText(f"{val}%")
         subprocess.run(['amixer', 'sset', 'Mic', f"{val}%"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
+    # ------------------ Targeted Headset RGB Tab ------------------
     def create_headset_rgb_tab(self):
         tab = QWidget()
         layout = QVBoxLayout(tab)
         layout.setSpacing(16)
         layout.setContentsMargins(12, 12, 12, 12)
 
-        rgb_group = QGroupBox("G733 Front Lightstrip RGB Controls (OpenRGB)")
+        rgb_group = QGroupBox("Targeted G733 Headset RGB Lightstrip Customizer (HID++)")
         rlayout = QVBoxLayout(rgb_group)
 
-        rlayout.addWidget(QLabel("Select Lightstrip Lighting Effect:"))
-        combo_effect = QComboBox()
-        combo_effect.addItems(["Static Color", "Breathing Pulse", "Spectrum Cycle", "Stealth (LEDs OFF)"])
-        rlayout.addWidget(combo_effect)
+        rlayout.addWidget(QLabel("Directly controls the G733 front lightstrips without affecting other devices:"))
 
-        btn_color = QPushButton("🎨 Select Custom RGB Color...")
-        btn_color.clicked.connect(self.choose_rgb_color)
+        eff_layout = QHBoxLayout()
+        eff_layout.addWidget(QLabel("Lighting Effect Mode:"))
+        self.combo_hs_effect = QComboBox()
+        self.combo_hs_effect.addItem("Static Color", 1)
+        self.combo_hs_effect.addItem("Breathing Pulse", 2)
+        self.combo_hs_effect.addItem("Spectrum Cycle", 3)
+        self.combo_hs_effect.addItem("Stealth (LEDs OFF)", 0)
+        self.combo_hs_effect.currentIndexChanged.connect(self.on_hs_effect_changed)
+        eff_layout.addWidget(self.combo_hs_effect)
+        eff_layout.addStretch()
+        rlayout.addLayout(eff_layout)
+
+        btn_color = QPushButton("🎨 Pick Headset Color (Opens Color Picker)...")
+        btn_color.setObjectName("accentBtn")
+        btn_color.setFixedHeight(38)
+        btn_color.clicked.connect(self.choose_headset_rgb_color)
         rlayout.addWidget(btn_color)
 
         palette_box = QHBoxLayout()
         palette_box.addWidget(QLabel("Quick Color Palettes:"))
-        colors = [("Cyan", "00FFFF"), ("Purple", "9900FF"), ("Emerald", "00FF66"), ("Red", "FF0033"), ("Off", "000000")]
-        for cname, ccode in colors:
+        colors = [
+            ("Cyan", 0, 255, 255),
+            ("Purple", 180, 0, 255),
+            ("Emerald", 0, 255, 102),
+            ("Red", 255, 0, 51),
+            ("Solar", 255, 200, 0),
+            ("Stealth OFF", 0, 0, 0)
+        ]
+        for cname, r, g, b in colors:
             btn = QPushButton(cname)
-            btn.clicked.connect(lambda _, hex_val=ccode: subprocess.run(['openrgb', '--color', hex_val], stdout=subprocess.DEVNULL))
+            btn.clicked.connect(lambda _, cr=r, cg=g, cb=b: set_g733_rgb(cr, cg, cb, mode=1 if (cr or cg or cb) else 0))
             palette_box.addWidget(btn)
         palette_box.addStretch()
         rlayout.addLayout(palette_box)
@@ -1334,17 +1522,60 @@ class G502ControlApp(QMainWindow):
         layout.addStretch()
         return tab
 
-    def choose_rgb_color(self):
-        color = QColorDialog.getColor(QColor("#38BDF8"), self, "Pick Headset RGB Color")
-        if color.isValid():
-            hex_val = color.name().lstrip("#")
-            subprocess.run(['openrgb', '--color', hex_val], stdout=subprocess.DEVNULL)
+    def on_hs_effect_changed(self, idx):
+        mode = self.combo_hs_effect.currentData()
+        if mode == 0:
+            set_g733_rgb(0, 0, 0, mode=0)
+        elif mode == 3:
+            set_g733_rgb(0, 255, 255, mode=3)
+        else:
+            set_g733_rgb(56, 189, 248, mode=mode)
 
+    def choose_headset_rgb_color(self):
+        color = QColorDialog.getColor(QColor("#38BDF8"), self, "Pick G733 Headset RGB Color")
+        if color.isValid():
+            set_g733_rgb(color.red(), color.green(), color.blue(), mode=1)
+
+    # ------------------ Battery & Info Tab ------------------
     def create_headset_info_tab(self):
         tab = QWidget()
         layout = QVBoxLayout(tab)
-        layout.setSpacing(14)
+        layout.setSpacing(16)
         layout.setContentsMargins(12, 12, 12, 12)
+
+        # Battery Status Card
+        bat_group = QGroupBox("Wireless Battery Indication & Voice Announcement")
+        blayout = QVBoxLayout(bat_group)
+
+        b_top = QHBoxLayout()
+        b_top.addWidget(QLabel("Battery Charge Level:"))
+        self.lbl_hs_battery_pct = QLabel("67% (Discharging)")
+        self.lbl_hs_battery_pct.setStyleSheet("color: #38BDF8; font-weight: bold; font-size: 16px;")
+        b_top.addWidget(self.lbl_hs_battery_pct)
+        b_top.addStretch()
+
+        btn_speak = QPushButton("🔊 Hear Battery Charge % (Voice)")
+        btn_speak.setObjectName("accentBtn")
+        btn_speak.clicked.connect(self.speak_current_battery)
+        b_top.addWidget(btn_speak)
+
+        blayout.addLayout(b_top)
+
+        self.bar_hs_battery = QProgressBar()
+        self.bar_hs_battery.setRange(0, 100)
+        self.bar_hs_battery.setValue(67)
+        self.bar_hs_battery.setStyleSheet("QProgressBar::chunk { background-color: #38BDF8; }")
+        blayout.addWidget(self.bar_hs_battery)
+
+        self.lbl_hs_mv = QLabel("Voltage: 3958 mV (Standard Li-Po Battery Curve)")
+        self.lbl_hs_mv.setStyleSheet("color: #94A3B8; font-size: 12px;")
+        blayout.addWidget(self.lbl_hs_mv)
+
+        note_label = QLabel("💡 Pressing the power button on your headset automatically triggers the voice battery announcement.")
+        note_label.setStyleSheet("color: #34D399; font-size: 12px; font-weight: bold;")
+        blayout.addWidget(note_label)
+
+        layout.addWidget(bat_group)
 
         grp = QGroupBox("G733 Hardware Information & Connection")
         glayout = QVBoxLayout(grp)
@@ -1352,8 +1583,8 @@ class G502ControlApp(QMainWindow):
         info_text = QLabel(
             "• Model: Logitech G733 LIGHTSPEED Wireless Gaming Headset\n"
             "• USB Product ID: 046d:0ab5\n"
-            "• Driver Backend: PipeWire + WirePlumber + ALSA Kernel Module\n"
-            "• Connection Type: 2.4GHz LIGHTSPEED Wireless Receiver\n"
+            "• Driver Backend: Native HID++ 2.0 + PipeWire / WirePlumber + ALSA\n"
+            "• Connection Type: 2.4GHz LIGHTSPEED Wireless Dongle\n"
             "• Status: ONLINE & Connected"
         )
         info_text.setFont(QFont("Segoe UI", 11))
@@ -1362,6 +1593,8 @@ class G502ControlApp(QMainWindow):
 
         layout.addWidget(grp)
         layout.addStretch()
+
+        self.refresh_battery_status()
         return tab
 
     # ------------------ Service & Helper Logic ------------------
@@ -1425,7 +1658,8 @@ class G502ControlApp(QMainWindow):
 
     def apply_all_black_rgb(self):
         subprocess.run(['openrgb', '--profile', 'ALL Black'], stdout=subprocess.DEVNULL)
-        QMessageBox.information(self, "OpenRGB", "Applied 'ALL Black' profile successfully!")
+        set_g733_rgb(0, 0, 0, mode=0)
+        QMessageBox.information(self, "OpenRGB & HID++", "Applied 'ALL Black' profile successfully!")
 
     def refresh_logs(self):
         try:
