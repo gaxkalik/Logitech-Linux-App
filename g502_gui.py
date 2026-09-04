@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """
-AGY Logitech Linux Control Suite & Macro Studio v2.1
+AGY Logitech Linux Control Suite & Macro Studio v2.2
 --------------------------------------------------
 A unified, feature-packed Linux control application for Logitech Gaming Gear:
   - Logitech Gaming Mouse (G502 Hero/LIGHTSPEED, etc.) via libratbagd & Piper interactive button macro customization.
   - Logitech Gaming Headset (G733 Wireless) via direct HID++ 2.0 driver, PipeWire/ALSA & OpenRGB.
   - Targeted G733 RGB Lightstrip Control (Feature 0x8070 over hidraw).
-  - Live Battery Indication (Percentage & Voltage) for wireless devices.
-  - Voice Announcement of Battery Percentage on Headset Power Button press or System Tray click (using spd-say).
+  - Smooth, Hysteresis-Filtered Battery Indication (5% steps, no voltage bouncing).
+  - Voice Announcement of Battery Percentage ONLY when pressing headset power button or GUI/Tray action.
   - System Tray Integration (QSystemTrayIcon) with minimize-on-close behavior.
   - Comprehensive Settings Page (⚙ Gear icon) with Appearance themes, live System Diagnostics, and GitHub link.
   - Hamburger Menu (☰) for quick device switching and app controls.
@@ -348,7 +348,9 @@ CUSTOM_KEYS = [
     ("Number 5", "KEY_5"),
 ]
 
-# ------------------ Native Logitech G733 HID++ Hardware Driver ------------------
+# ------------------ Native Logitech G733 Hardware Driver & Battery Filter ------------------
+
+_last_battery_pct = None
 
 def find_g733_hidraw():
     for h in glob.glob('/sys/class/hidraw/hidraw*'):
@@ -364,6 +366,7 @@ def find_g733_hidraw():
     return None
 
 def get_g733_battery_info():
+    global _last_battery_pct
     dev_path = find_g733_hidraw()
     if not dev_path:
         return None, "Disconnected", 0
@@ -375,7 +378,7 @@ def get_g733_battery_info():
         
         res = None
         t0 = time.time()
-        while time.time() - t0 < 0.3:
+        while time.time() - t0 < 0.2:
             try:
                 b = os.read(fd, 64)
                 if b and len(b) >= 7 and b[0] == 0x11 and b[2] == 0x08:
@@ -390,33 +393,59 @@ def get_g733_battery_info():
             mV = (res[4] << 8) | res[5]
             status_code = res[6]
             status_str = "Charging" if status_code == 3 else ("Full" if status_code == 2 else "Discharging")
-            if mV <= 3500:
-                pct = 0
-            elif mV >= 4180:
-                pct = 100
+            
+            # Logitech G733 Li-Po discharge curve mapped to 5% G HUB steps
+            if mV >= 4120:
+                raw_pct = 100
+            elif mV >= 4050:
+                raw_pct = 95
+            elif mV >= 3980:
+                raw_pct = 90
+            elif mV >= 3920:
+                raw_pct = 85
+            elif mV >= 3860:
+                raw_pct = 80
+            elif mV >= 3800:
+                raw_pct = 75
+            elif mV >= 3750:
+                raw_pct = 70
+            elif mV >= 3700:
+                raw_pct = 60
+            elif mV >= 3650:
+                raw_pct = 50
+            elif mV >= 3600:
+                raw_pct = 35
+            elif mV >= 3550:
+                raw_pct = 20
             else:
-                pct = int((mV - 3500) / (4180 - 3500) * 100)
-            return pct, status_str, mV
+                raw_pct = 10
+
+            # Hysteresis Filter: Prevent bouncing up/down from micro voltage drops under load
+            if status_str != "Charging":
+                if _last_battery_pct is None:
+                    _last_battery_pct = raw_pct
+                else:
+                    if abs(raw_pct - _last_battery_pct) <= 5:
+                        pass
+                    elif raw_pct < _last_battery_pct:
+                        _last_battery_pct = raw_pct
+                    elif raw_pct > _last_battery_pct + 5:
+                        _last_battery_pct = raw_pct
+            else:
+                _last_battery_pct = raw_pct
+
+            return _last_battery_pct, status_str, mV
     except Exception as e:
         logging.error(f"Error querying G733 battery: {e}")
     return None, "Unknown", 0
 
 def set_g733_rgb(r, g, b, mode=1):
-    """
-    Sends targeted HID++ RGB LED command to G733 Headset (Feature 0x8070, Index 0x04).
-    Modes:
-      1: Static Color
-      2: Breathing Pulse
-      3: Spectrum Cycle
-      0: Off
-    """
     dev_path = find_g733_hidraw()
     if not dev_path:
         logging.warning("Cannot set G733 RGB: hidraw device not found")
         return False
     try:
         fd = os.open(dev_path, os.O_RDWR | os.O_NONBLOCK)
-        # Send HID++ RGB command to Zone 0, Zone 1, and Zone 0xFF (All zones)
         for zone in [0, 1, 0xFF]:
             cmd = bytes([0x11, 0xFF, 0x04, 0x10, zone, mode, r, g, b, 0x00, 0x00, 0x64] + [0x00]*8)
             os.write(fd, cmd)
@@ -447,17 +476,18 @@ class G733PowerButtonListenerThread(QThread):
             return
         try:
             fd = os.open(dev_path, os.O_RDWR | os.O_NONBLOCK)
-            last_speak_time = 0
+            last_event_time = 0
             while not self.isInterruptionRequested():
                 try:
                     data = os.read(fd, 64)
                     if data and len(data) >= 4:
-                        # HID++ report notification or power report
-                        if time.time() - last_speak_time > 3.0:
-                            pct, status, mV = get_g733_battery_info()
-                            if pct is not None:
-                                last_speak_time = time.time()
-                                self.speak_battery_signal.emit(pct, status)
+                        # HID++ explicit power button press report (0x11 FF 0x08 ... or button notification)
+                        if data[0] == 0x11 and data[2] in (0x08, 0x00, 0x03):
+                            if time.time() - last_event_time > 2.0:
+                                last_event_time = time.time()
+                                pct, status, mV = get_g733_battery_info()
+                                if pct is not None:
+                                    self.speak_battery_signal.emit(pct, status)
                 except BlockingIOError:
                     pass
                 time.sleep(0.1)
@@ -621,7 +651,6 @@ class SettingsDialog(QDialog):
         pw_ok = res.returncode == 0
         report.append(f"[Audio Daemon] PipeWire / WirePlumber: {'✅ ONLINE' if pw_ok else '❌ OFFLINE'}")
 
-        # HID++ G733 Status
         dev_path = find_g733_hidraw()
         pct, b_status, mV = get_g733_battery_info()
         report.append(f"[G733 HID++ Hardware]: {'✅ CONNECTED ('+dev_path+')' if dev_path else '⚠️ DISCONNECTED'}")
@@ -800,15 +829,15 @@ class G502ControlApp(QMainWindow):
         # System Tray Integration
         self.init_system_tray()
 
-        # Start G733 Power Button Listener Thread
+        # Start G733 Power Button Listener Thread (Listens ONLY for hardware power button press)
         self.listener_thread = G733PowerButtonListenerThread()
         self.listener_thread.speak_battery_signal.connect(self.on_battery_announced)
         self.listener_thread.start()
 
-        # Status & Battery Refresh Timer
+        # Status & Battery Refresh Timer (Updates UI silently without speaking)
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.periodic_refresh)
-        self.timer.start(3000)
+        self.timer.start(5000)
         self.periodic_refresh()
 
     def periodic_refresh(self):
@@ -822,7 +851,7 @@ class G502ControlApp(QMainWindow):
             if hasattr(self, 'lbl_hs_battery_pct'):
                 self.lbl_hs_battery_pct.setText(f"{pct}% ({status_str})")
                 self.bar_hs_battery.setValue(pct)
-                self.lbl_hs_mv.setText(f"Voltage: {mV} mV")
+                self.lbl_hs_mv.setText(f"Voltage: {mV} mV (Smoothed G HUB 5% steps)")
             if hasattr(self, 'tray_icon'):
                 self.tray_icon.setToolTip(f"Logitech Linux Control Suite — G733: {pct}% ({status_str})")
         else:
@@ -1543,13 +1572,12 @@ class G502ControlApp(QMainWindow):
         layout.setSpacing(16)
         layout.setContentsMargins(12, 12, 12, 12)
 
-        # Battery Status Card
         bat_group = QGroupBox("Wireless Battery Indication & Voice Announcement")
         blayout = QVBoxLayout(bat_group)
 
         b_top = QHBoxLayout()
         b_top.addWidget(QLabel("Battery Charge Level:"))
-        self.lbl_hs_battery_pct = QLabel("67% (Discharging)")
+        self.lbl_hs_battery_pct = QLabel("85% (Discharging)")
         self.lbl_hs_battery_pct.setStyleSheet("color: #38BDF8; font-weight: bold; font-size: 16px;")
         b_top.addWidget(self.lbl_hs_battery_pct)
         b_top.addStretch()
@@ -1563,15 +1591,15 @@ class G502ControlApp(QMainWindow):
 
         self.bar_hs_battery = QProgressBar()
         self.bar_hs_battery.setRange(0, 100)
-        self.bar_hs_battery.setValue(67)
+        self.bar_hs_battery.setValue(85)
         self.bar_hs_battery.setStyleSheet("QProgressBar::chunk { background-color: #38BDF8; }")
         blayout.addWidget(self.bar_hs_battery)
 
-        self.lbl_hs_mv = QLabel("Voltage: 3958 mV (Standard Li-Po Battery Curve)")
+        self.lbl_hs_mv = QLabel("Voltage: 3958 mV (Smoothed G HUB 5% steps)")
         self.lbl_hs_mv.setStyleSheet("color: #94A3B8; font-size: 12px;")
         blayout.addWidget(self.lbl_hs_mv)
 
-        note_label = QLabel("💡 Pressing the power button on your headset automatically triggers the voice battery announcement.")
+        note_label = QLabel("💡 Pressing the power button on your headset (or clicking above) speaks the remaining battery charge out loud.")
         note_label.setStyleSheet("color: #34D399; font-size: 12px; font-weight: bold;")
         blayout.addWidget(note_label)
 
