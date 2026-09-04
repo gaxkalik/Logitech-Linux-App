@@ -281,23 +281,27 @@ QTabWidget::pane {{
     border: 1px solid {t['border']};
     background-color: {t['bg_card']};
     border-radius: 8px;
-    top: -1px;
+    margin-top: 0px;
 }}
 
 QTabBar::tab {{
     background-color: {t['bg_main']};
     color: {t['text_sub']};
-    padding: 10px 20px;
+    padding: 9px 18px;
     font-weight: bold;
     font-size: 13px;
+    border: 1px solid {t['border']};
+    border-bottom: none;
     border-top-left-radius: 6px;
     border-top-right-radius: 6px;
     margin-right: 4px;
+    margin-bottom: -1px;
 }}
 
 QTabBar::tab:selected {{
     background-color: {t['bg_card']};
     color: {t['accent']};
+    border: 1px solid {t['border']};
     border-bottom: 2px solid {t['accent']};
 }}
 
@@ -432,13 +436,38 @@ QComboBox {{
     background-color: {t['bg_input']};
     border: 1px solid {t['border']};
     border-radius: 6px;
-    padding: 6px 12px;
+    padding: 6px 30px 6px 12px;
     color: {t['text_main']};
     font-size: 13px;
 }}
 
 QComboBox:hover {{
     border-color: {t['accent']};
+}}
+
+QComboBox::drop-down {{
+    subcontrol-origin: padding;
+    subcontrol-position: top right;
+    width: 26px;
+    border-left: 1px solid {t['border']};
+    border-top-right-radius: 6px;
+    border-bottom-right-radius: 6px;
+    background: transparent;
+}}
+
+QComboBox::down-arrow {{
+    image: none;
+    width: 0;
+    height: 0;
+    border-left: 4px solid transparent;
+    border-right: 4px solid transparent;
+    border-top: 5px solid {t['accent']};
+    margin-right: 2px;
+}}
+
+QComboBox::down-arrow:on {{
+    border-top: none;
+    border-bottom: 5px solid {t['accent']};
 }}
 
 QComboBox QAbstractItemView {{
@@ -668,8 +697,8 @@ def set_g733_sidetone(val):
         logging.warning("Cannot set G733 sidetone: hidraw device not found")
         return False
     try:
-        # Scale 0-100% to G733 hardware firmware max range (0 - 75 / 0x4B)
-        hw_val = int((val / 100.0) * 75)
+        # Scale 0-100% to G733 hardware firmware max range (0 - 128 / 0x80)
+        hw_val = int((val / 100.0) * 128)
         fd = os.open(dev_path, os.O_RDWR | os.O_NONBLOCK)
         cmd = bytes([0x11, 0xFF, 0x07, 0x10, hw_val] + [0x00]*15)
         os.write(fd, cmd)
@@ -766,8 +795,17 @@ class MicMeterThread(QThread):
 
     def run(self):
         try:
+            source_arg = []
+            try:
+                res = subprocess.run(['pactl', 'get-default-source'], capture_output=True, text=True, timeout=1)
+                src = res.stdout.strip()
+                if src:
+                    source_arg = [f'--device={src}']
+            except Exception:
+                pass
+
             p = subprocess.Popen(
-                ['parec', '--channels=1', '--rate=16000', '--format=s16le', '--raw'],
+                ['parec'] + source_arg + ['--channels=1', '--rate=16000', '--format=s16le', '--raw'],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.DEVNULL
             )
@@ -777,7 +815,12 @@ class MicMeterThread(QThread):
                     num_samples = len(raw) // 2
                     samples = struct.unpack(f'<{num_samples}h', raw)
                     peak = max(abs(s) for s in samples) if samples else 0
-                    pct = min(100, int((peak / 16000.0) * 100))
+                    if peak > 50:
+                        import math
+                        db = 20 * math.log10(peak / 32768.0)
+                        pct = max(0, min(100, int((db + 45) * 2.2)))
+                    else:
+                        pct = 0
                     self.level_signal.emit(pct)
                 else:
                     time.sleep(0.05)
@@ -1086,13 +1129,6 @@ class G502ControlApp(QMainWindow):
         status_layout.addWidget(self.btn_toggle_service)
         header_layout.addLayout(status_layout)
 
-        # Gear Icon Button (⚙) for Settings
-        btn_settings = QPushButton("⚙")
-        btn_settings.setObjectName("btnIcon")
-        btn_settings.setToolTip("Application Settings & Diagnostics")
-        btn_settings.clicked.connect(self.open_settings_dialog)
-        header_layout.addWidget(btn_settings)
-
         main_layout.addWidget(header)
 
         # Stacked Widget for Device Views (0 = Mouse View, 1 = Headset View)
@@ -1257,20 +1293,31 @@ class G502ControlApp(QMainWindow):
         act_headset.triggered.connect(lambda: self.combo_main_device.setCurrentIndex(1))
         
         menu.addSeparator()
+        act_settings = menu.addAction("⚙️ Settings & Diagnostics Studio")
+        act_settings.triggered.connect(self.open_settings_dialog)
+
+        menu.addSeparator()
         act_speak = menu.addAction("🔊 Hear Remaining Battery Charge %")
         act_speak.triggered.connect(self.speak_current_battery)
 
-        act_toggle = menu.addAction("⚡ Toggle Macro Daemon Service")
-        act_toggle.triggered.connect(self.toggle_service)
-        
         act_mic = menu.addAction("🎙️ Toggle Headset Mic Mute")
         act_mic.triggered.connect(self.toggle_headset_mic)
 
-        menu.addSeparator()
-        act_settings = menu.addAction("⚙️ Application Settings & Diagnostics")
-        act_settings.triggered.connect(self.open_settings_dialog)
+        act_toggle = menu.addAction("⚡ Toggle Background Macro Service")
+        act_toggle.triggered.connect(self.toggle_service)
 
-        menu.exec(QCursor.pos())
+        menu.addSeparator()
+        act_github = menu.addAction("🌐 Open GitHub Repository")
+        act_github.triggered.connect(lambda: QDesktopServices.openUrl(QUrl(GITHUB_URL)))
+
+        act_quit = menu.addAction("❌ Quit Control Center")
+        act_quit.triggered.connect(QApplication.instance().quit)
+
+        btn = self.sender()
+        if btn and isinstance(btn, QWidget):
+            menu.exec(btn.mapToGlobal(QPoint(0, btn.height())))
+        else:
+            menu.exec(QCursor.pos())
 
     def open_settings_dialog(self):
         dlg = SettingsDialog(self)
@@ -1776,7 +1823,7 @@ class G502ControlApp(QMainWindow):
         meter_layout = QVBoxLayout(meter_group)
         self.mic_meter = QProgressBar()
         self.mic_meter.setRange(0, 100)
-        self.mic_meter.setValue(45)
+        self.mic_meter.setValue(0)
         self.mic_meter.setTextVisible(False)
         self.mic_meter.setObjectName("micMeter")
         meter_layout.addWidget(self.mic_meter)
@@ -1803,7 +1850,14 @@ class G502ControlApp(QMainWindow):
 
     def on_sidetone_changed(self, val):
         self.lbl_sidetone.setText(f"{val}%")
-        set_g733_sidetone(val)
+        try:
+            if not hasattr(self, 'sidetone_timer'):
+                self.sidetone_timer = QTimer(self)
+                self.sidetone_timer.setSingleShot(True)
+                self.sidetone_timer.timeout.connect(lambda: set_g733_sidetone(self.side_slider.value()))
+            self.sidetone_timer.start(50)
+        except Exception as e:
+            logging.error(f"Error in on_sidetone_changed: {e}")
 
     # ------------------ Targeted Headset RGB Tab ------------------
     def create_headset_rgb_tab(self):
