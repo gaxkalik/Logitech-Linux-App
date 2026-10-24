@@ -1,30 +1,49 @@
 # 🖱️🎧 Logitech Linux Control Suite & Macro Studio (G502 Mouse & G733 Headset)
 
-A zero-lag, native Linux control center for Logitech Gaming Gear featuring multi-device hardware macro daemons, DPI tuning, PipeWire audio controls, OpenRGB lighting integration, system tray minimization, and Piper interactive customization.
+A zero-lag, native Linux control center for Logitech Gaming Gear featuring multi-device hardware macro daemons, exact 1:1 pixel-per-centimeter DPI calibration, PipeWire audio controls, 10-band native HID++ 2.0 hardware equalizer, OpenRGB lighting integration, system tray minimization, and Piper interactive customization.
 
 > [!NOTE]  
 > **⚠️ Verified Hardware**: Tested and verified on **Logitech Gaming Mouse G502** (`usb:046d:c332` / `c539`) and **Logitech G733 LIGHTSPEED Wireless Gaming Headset** (`usb:046d:0ab5`).
 
 ---
 
+## 📸 Screenshots & Interface Preview
+
+### 🖱️ Interactive Mouse Button Studio (*Dark Void Theme*)
+![Interactive Mouse Button Studio](screenshots/mouse_button_studio.png)
+
+### ⚙️ Hardware DPI & Exact 1:1 Pixel-per-Centimeter Calibration (*Midnight Cyan Theme*)
+![DPI and 1:1 Calibration](screenshots/mouse_dpi_calibration.png)
+
+### 🔊 Headset Master Audio & 10-Band Hardware Equalizer (*Cyberpunk Neon Theme*)
+![Headset Sound and Equalizer](screenshots/headset_equalizer.png)
+
+### 🎙️ Microphone Gain, Hardware Sidetone & Live Level Meter (*Emerald Forest Theme*)
+![Headset Microphone Controls](screenshots/headset_microphone.png)
+
+### 🎨 Settings, 18 Visual Themes & System Health Diagnostics (*Tokyo Night Theme*)
+![Settings and Themes Studio](screenshots/settings_themes.png)
+
+---
+
 ## ✨ Features & Multi-Device Capabilities
 
 ### 🖱️ Gaming Mouse Studio (Logitech G502 & `libratbagd`)
-- **Interactive Button Selector Studio**: Click to select physical mouse buttons (**G8**, **G7**, **G9**, **Wheel Tilt Left**, **Wheel Tilt Right**, etc.), set hold duration (ms), repeat delay (ms), and macro actions live.
+- **Interactive Button Selector Studio**: Visual G502 hardware button diagram and 1-click physical button selector (**G8**, **G7**, **G9**, **Wheel Tilt Left**, **Wheel Tilt Right**), with live hold duration (ms), repeat interval delay (ms), and macro action assignment.
 - **Action Selectors**: Left Click Loop, Right Click Loop, Middle Click Loop, Space Key Loop, Win + V Clipboard History, Custom Key Loop, or Disabled.
-- **Hardware DPI Controls**: Live sensor resolution adjustments (400 - 4000+ DPI, default 1200 DPI) synced across onboard mouse profiles via `ratbagctl`.
-- **Pointer Acceleration & Speed**: Toggle between **Flat (1:1 Raw Linear)** and **Adaptive (Windows-style Curve)** with live KDE KWin DBus scaling.
+- **Hardware DPI Controls**: Live sensor resolution adjustments (400 – 4000+ DPI, default 800 DPI) synced across onboard mouse profiles via `ratbagctl`.
+- **Pointer Acceleration & Exact 1:1 Calibration**: Toggle between **Flat (1:1 Raw Linear)** and **Adaptive (Windows-style Curve)** with live KDE KWin DBus scaling, or calibrate an exact **Pixel-per-Centimeter** ratio (e.g. `265.72 px/cm` = ~675 effective DPI) directly to KWin and `kcminputrc`.
 
-### 🎧 Gaming Headset Studio (Logitech G733 & PipeWire / ALSA)
-- **Sound & Equalizer**: Live Master Headphone Volume slider, output mute toggle, 5-Band EQ sliders (60Hz, 250Hz, 1kHz, 4kHz, 12kHz), and EQ Presets (*Flat 1:1, FPS Gaming, Bass Boost, Cinematic*).
-- **Microphone Controls**: Live Mic Gain level slider, instant Mute/Unmute button, Hardware Sidetone Level slider (to naturally hear your own voice), and Live Mic Test Level bar.
-- **RGB Lightstrip Effects**: Targeted HID++ 2.0 RGB controller for G733 front lightstrips, static colors, breathing pulse, spectrum cycle, stealth OFF, and quick color palettes.
-- **Wireless Battery & Spoken Announcements**: Live voltage & smoothed G HUB 5% step battery level indicator. Hear remaining charge percentage spoken out loud (`spd-say`/`espeak`) by pressing the physical headset power button, clicking the header badge, or selecting from the tray menu.
+### 🎧 Gaming Headset Studio (Logitech G733 & PipeWire / HID++ 2.0)
+- **Sound & 10-Band Hardware Equalizer**: Live Master Headphone Volume slider, output mute toggle, 5-Band UI EQ sliders interpolated directly into the G733's native 10-Band HID++ 2.0 Equalizer (`Feature 0x8310`), and instant EQ Presets (*Flat 1:1, FPS Gaming, Bass Boost, Cinematic*).
+- **Microphone Controls**: Live Mic Gain level slider, instant Mute/Unmute toggle, Hardware Sidetone Level slider (`0–100%` zero-latency monitoring), and auto-recovering Live Mic Level Monitor bar.
+- **Targeted RGB Lightstrip Effects**: Direct HID++ 2.0 RGB controller for G733 dual-zone front lightstrips, static colors, breathing pulse, spectrum cycle, stealth OFF, and quick color palettes.
+- **Wireless Battery & Spoken Announcements**: Live voltage & hysteresis-smoothed G HUB 5% step battery indicator. Hear remaining charge percentage spoken out loud (`spd-say`/`espeak`) by pressing the physical headset power button, clicking the header badge, or selecting from the tray menu.
 
 ### ⚙️ Settings Studio & 📌 System Tray Integration
-- **Gear Icon Settings Page (⚙)**:
-  - **18 Themes & Appearance**: *Dark Void (Default), Midnight Cyan, Cyberpunk Neon, Slate Dark, Nordic Frost, Dracula Dark, Emerald Forest, Sunset Crimson, Tokyo Night, Solar Gold, Synthwave 80s, Matrix Hacker, Deep Amethyst, Oceanic Abyss, Rose Gold Luxe, Vaporwave Pastel, Monochrome Stealth, Light Pristine*.
-  - **System Health Audit / Diagnostics**: Live check of `g502-macros.service`, `ratbagd`, PipeWire audio daemon, OpenRGB, and input nodes.
+- **Gear Icon Settings Page (`⚙`)**:
+  - **18 Curated Themes**: *Dark Void (Default), Midnight Cyan, Cyberpunk Neon, Slate Dark, Nordic Frost, Dracula Dark, Emerald Forest, Sunset Crimson, Tokyo Night, Solar Gold, Synthwave 80s, Matrix Hacker, Deep Amethyst, Oceanic Abyss, Rose Gold Luxe, Vaporwave Pastel, Monochrome Stealth, Light Pristine*.
+  - **System Health Audit / Diagnostics**: Live check of `g502-macros.service`, `ratbagd`, PipeWire audio daemon, and G733 HID++ hardware nodes.
   - **System Tray Options**: Minimize window to system tray on close when macro daemon is active.
   - **About & Repository**: Direct link to GitHub repository (`https://github.com/gaxkalik/Logitech-Linux-App`).
 - **📌 System Tray Menu (`QSystemTrayIcon`)**:
@@ -54,6 +73,11 @@ A zero-lag, native Linux control center for Logitech Gaming Gear featuring multi
      ```bash
      ./g502_gui.py
      ```
+
+4. **Run the Automated Test Suite**:
+   ```bash
+   python3 tests/test_suite.py
+   ```
 
 ---
 
