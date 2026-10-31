@@ -9,19 +9,25 @@ A native Linux hardware configuration and telemetry interface for Logitech G per
 
 ## Interface Previews
 
-### 1. G502 HERO — Assignments & Interactive Callout Stage
+### 1. Logitech G HUB Home Page — Device Cards & Live Telemetry
+![Logitech G HUB Home Screen](screenshots/home_devices.png)
+
+### 2. G502 HERO — Assignments, Interactive Callout Stage & G-SHIFT Toggle
 ![G502 Assignments and Interactive Stage](screenshots/mouse_button_studio.png)
 
-### 2. G502 HERO — Sensitivity (DPI) & Exact 1:1 Pixel-per-Centimeter Calibration
+### 3. G502 HERO — Sensitivity (DPI) & Exact 1:1 Pixel-per-Centimeter Calibration
 ![G502 Sensitivity and 1:1 Calibration](screenshots/mouse_dpi_calibration.png)
 
-### 3. G733 LIGHTSPEED — Acoustics & 10-Band Hardware DSP Equalizer
+### 4. G502 HERO — Standalone LIGHTSYNC Color & Brightness Calibration
+![G502 LIGHTSYNC Calibration](screenshots/mouse_lightsync.png)
+
+### 5. G733 LIGHTSPEED — Acoustics & 10-Band Hardware DSP Equalizer
 ![G733 Acoustics and 10-Band Equalizer](screenshots/headset_equalizer.png)
 
-### 4. G733 LIGHTSPEED — Microphone Gain, Hardware Sidetone & Real-Time Peak Meter
+### 6. G733 LIGHTSPEED — Microphone Gain, Hardware Sidetone & Real-Time Peak Meter
 ![G733 Microphone and Sidetone Controls](screenshots/headset_microphone.png)
 
-### 5. Settings, High-Contrast Monochrome Palettes & Subsystem Diagnostics
+### 7. Settings, XDG Autostart, Monochrome Palettes & Subsystem Diagnostics
 ![Settings and Subsystem Diagnostics](screenshots/settings_themes.png)
 
 ---

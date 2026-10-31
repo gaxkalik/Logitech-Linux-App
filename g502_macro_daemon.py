@@ -18,6 +18,7 @@ import select
 import glob
 import json
 import logging
+import subprocess
 import evdev
 from evdev import InputDevice, UInput, ecodes as e
 
@@ -29,9 +30,11 @@ logging.basicConfig(
 CONFIG_PATH = os.path.expanduser('~/.config/g502_macros/config.json')
 
 # Hardware Event IDs
-CODE_G7 = e.BTN_FORWARD   # 277 (DPI Down)
-CODE_G8 = e.BTN_BACK      # 278 (DPI Up)
-CODE_G9 = e.BTN_TASK      # 279 (Profile Select)
+CODE_G7 = e.BTN_FORWARD   # 277 (Button 6 - DPI Down)
+CODE_G8 = e.BTN_BACK      # 278 (Button 7 - DPI Up)
+CODE_G9 = e.BTN_TASK      # 279 (Button 8 - Profile Select)
+CODE_TILT_RIGHT = 280     # 280 (Button 9 - Wheel Tilt Right)
+CODE_TILT_LEFT = 281      # 281 (Button 10 - Wheel Tilt Left)
 
 DEFAULT_CONFIG = {
     "buttons": {
@@ -149,6 +152,28 @@ class G502MacroDaemon:
             if not timeout_based:
                 self.stop_macro(key_name)
 
+    def ensure_g502_ratbag_buttons(self):
+        """Ensure G502 ratbagctl Profile 0 is active and buttons 6..10 emit EV_KEY events."""
+        try:
+            res = subprocess.run(["ratbagctl", "list"], capture_output=True, text=True, timeout=2.0)
+            dev_id = None
+            for line in res.stdout.splitlines():
+                if ":" in line and "G502" in line.upper():
+                    dev_id = line.split(":")[0].strip()
+                    break
+            if not dev_id:
+                return
+            subprocess.run(["ratbagctl", dev_id, "profile", "active", "set", "0"], capture_output=True, timeout=2.0)
+            for b in (6, 7, 8, 9, 10):
+                subprocess.run(
+                    ["ratbagctl", dev_id, "profile", "0", "button", str(b), "action", "set", "button", str(b)],
+                    capture_output=True,
+                    timeout=2.0
+                )
+            logging.info(f"Configured ratbagctl ({dev_id}) Profile 0 buttons 6..10 for EV_KEY macro capture.")
+        except Exception as ex:
+            logging.debug(f"Could not configure ratbagctl buttons automatically: {ex}")
+
     def start_macro(self, key_name, btn_cfg, timeout_based=False):
         with self.lock:
             current_time = time.time()
@@ -156,11 +181,11 @@ class G502MacroDaemon:
                 thread, stop_event, ref_dict = self.active_threads[key_name]
                 if thread.is_alive():
                     if timeout_based:
-                        ref_dict['expiry'] = current_time + 0.180  # Extend tilt pulse window
+                        ref_dict['expiry'] = current_time + 0.550  # Extend tilt pulse window across initial repeat delay
                     return
 
             stop_event = threading.Event()
-            ref_dict = {'expiry': current_time + 0.180 if timeout_based else None}
+            ref_dict = {'expiry': current_time + 0.550 if timeout_based else None}
             thread = threading.Thread(
                 target=self.run_macro_loop,
                 args=(btn_cfg, stop_event, ref_dict, timeout_based),
@@ -234,6 +259,7 @@ class G502MacroDaemon:
                 time.sleep(2)
                 continue
 
+            self.ensure_g502_ratbag_buttons()
             logging.info(f"Monitoring hardware device (passive mode): {dev.path} ({dev.name})")
 
             try:
@@ -244,20 +270,23 @@ class G502MacroDaemon:
 
                     for event in dev.read():
                         # --- PASSIVE DYNAMIC MACRO INTERCEPTIONS ---
-                        if event.type == e.EV_KEY:
-                            if event.code == CODE_G7:     # G7 (DPI Down)
+                        if event.type == e.EV_KEY and event.value in (0, 1):
+                            if event.code == CODE_G7:             # G7 (Button 6 - DPI Down)
                                 self.trigger_button_action('G7', event.value == 1)
-                            elif event.code == CODE_G8:   # G8 (DPI Up)
+                            elif event.code == CODE_G8:           # G8 (Button 7 - DPI Up)
                                 self.trigger_button_action('G8', event.value == 1)
-                            elif event.code == CODE_G9:   # G9 (Profile Select)
+                            elif event.code == CODE_G9:           # G9 (Button 8 - Profile Select)
                                 self.trigger_button_action('G9', event.value == 1)
+                            elif event.code == CODE_TILT_RIGHT:   # Button 9 (Wheel Tilt Right)
+                                self.trigger_button_action('TILT_RIGHT', event.value == 1)
+                            elif event.code == CODE_TILT_LEFT:    # Button 10 (Wheel Tilt Left)
+                                self.trigger_button_action('TILT_LEFT', event.value == 1)
 
                         elif event.type == e.EV_REL and event.code in (e.REL_HWHEEL, e.REL_HWHEEL_HI_RES):
-                            if event.code == e.REL_HWHEEL:
-                                if event.value < 0:      # Tilt Left
-                                    self.trigger_button_action('TILT_LEFT', True, timeout_based=True)
-                                elif event.value > 0:    # Tilt Right
-                                    self.trigger_button_action('TILT_RIGHT', True, timeout_based=True)
+                            if event.value < 0:                   # Tilt Left
+                                self.trigger_button_action('TILT_LEFT', True, timeout_based=True)
+                            elif event.value > 0:                 # Tilt Right
+                                self.trigger_button_action('TILT_RIGHT', True, timeout_based=True)
 
             except (OSError, IOError) as io_err:
                 logging.warning(f"Device read error or reconnected: {io_err}")

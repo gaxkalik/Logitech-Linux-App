@@ -46,7 +46,7 @@ DIAGRAM_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'g502_di
 ICON_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'icon.png')
 GITHUB_URL = "https://github.com/gaxkalik/Logitech-Linux-App"
 
-from ghub_canvas import write_ghub_svgs, HardwareStageWidget
+from ghub_canvas import write_ghub_svgs, HardwareStageWidget, GHubHomeWidget
 
 THEMES = {
     "Dark Void (Default)": {
@@ -949,19 +949,80 @@ def get_g733_battery_info():
         logging.error(f"Error querying G733 battery: {e}")
     return None, "Unknown", 0
 
-def set_g733_rgb(r, g, b, mode=1):
+def find_ratbag_device_id(keyword="G502"):
+    """Dynamically resolves the current ratbagd mammal ID (e.g. 'hooting-chinchilla' or 'thundering-gerbil')."""
+    try:
+        out = subprocess.check_output(['ratbagctl', 'list'], stderr=subprocess.DEVNULL, timeout=2).decode()
+        for line in out.splitlines():
+            if ':' in line:
+                dev_id, dev_name = [x.strip() for x in line.split(':', 1)]
+                if keyword.lower() in dev_name.lower():
+                    return dev_id
+    except Exception:
+        pass
+    return None
+
+
+def set_device_rgb_via_ratbag(keyword, r, g, b, mode=1, brightness=100, zone=None):
+    """Applies RGB color, brightness (0-100%), and effect mode to a Logitech device via ratbagctl."""
+    dev_id = find_ratbag_device_id(keyword)
+    if not dev_id:
+        return False
+    scale = max(0.0, min(1.0, brightness / 100.0))
+    sr = max(0, min(255, int(round(r * scale))))
+    sg = max(0, min(255, int(round(g * scale))))
+    sb = max(0, min(255, int(round(b * scale))))
+    hex_col = f"{sr:02x}{sg:02x}{sb:02x}"
+    raw_hex = f"{max(0, min(255, int(r))):02x}{max(0, min(255, int(g))):02x}{max(0, min(255, int(b))):02x}"
+    zones = [0, 1] if zone is None else [int(zone)]
+
+    try:
+        if keyword.upper() == "G502":
+            subprocess.run(['ratbagctl', dev_id, 'profile', 'active', 'set', '0'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=2)
+        for z in zones:
+            if mode == 0 or brightness <= 0 or (r == 0 and g == 0 and b == 0 and mode != 3):
+                cmd = ['ratbagctl', dev_id, 'led', str(z), 'set', 'mode', 'off']
+            elif mode == 2:
+                cmd = ['ratbagctl', dev_id, 'led', str(z), 'set', 'mode', 'breathing', 'color', raw_hex, 'brightness', str(int(brightness)), 'rate', '2000']
+            elif mode == 3:
+                cmd = ['ratbagctl', dev_id, 'led', str(z), 'set', 'mode', 'cycle', 'brightness', str(int(brightness)), 'rate', '5000']
+            else:
+                cmd = ['ratbagctl', dev_id, 'led', str(z), 'set', 'mode', 'on', 'color', hex_col]
+            subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=2)
+        return True
+    except Exception as e:
+        logging.error(f"ratbagctl LED update failed for {keyword}: {e}")
+        return False
+
+
+def set_g502_rgb(r, g, b, mode=1, brightness=100, zone=None):
+    """Sets G502 HERO RGB zones (Primary & Logo) with color and brightness."""
+    return set_device_rgb_via_ratbag("G502", r, g, b, mode=mode, brightness=brightness, zone=zone)
+
+
+def set_g733_rgb(r, g, b, mode=1, brightness=100, zone=None):
+    """Sets G733 LIGHTSPEED dual-zone RGB via both HID++ and ratbagd."""
+    scale = max(0.0, min(1.0, brightness / 100.0))
+    sr = max(0, min(255, int(round(r * scale))))
+    sg = max(0, min(255, int(round(g * scale))))
+    sb = max(0, min(255, int(round(b * scale))))
+
+    # Trigger ratbagd hardware LED update asynchronously
+    set_device_rgb_via_ratbag("G733", r, g, b, mode=mode, brightness=brightness, zone=zone)
+
     dev_path = find_g733_hidraw()
     if not dev_path:
-        logging.warning("Cannot set G733 RGB: hidraw device not found")
+        logging.warning("Cannot set G733 RGB via hidraw: device not found")
         return False
     try:
         fd = os.open(dev_path, os.O_RDWR | os.O_NONBLOCK)
-        for zone in [0, 1, 0xFF]:
-            cmd = bytes([0x11, 0xFF, 0x04, 0x10, zone, mode, r, g, b, 0x00, 0x00, 0x64] + [0x00]*8)
+        target_zones = [0, 1, 0xFF] if zone is None else [int(zone)]
+        for z in target_zones:
+            cmd = bytes([0x11, 0xFF, 0x04, 0x10, z, mode, sr, sg, sb, 0x00, 0x00, int(brightness)] + [0x00]*8)
             os.write(fd, cmd)
             time.sleep(0.01)
         os.close(fd)
-        logging.info(f"Targeted G733 Headset RGB set to R={r} G={g} B={b} (Mode {mode})")
+        logging.info(f"Targeted G733 Headset RGB set to R={sr} G={sg} B={sb} Brightness={brightness}% (Mode {mode})")
         return True
     except Exception as ex:
         logging.error(f"Error setting G733 RGB: {ex}")
@@ -1047,36 +1108,50 @@ class MicMeterThread(QThread):
             try:
                 source_arg = []
                 try:
-                    res = subprocess.run(['pactl', 'get-default-source'], capture_output=True, text=True, timeout=1)
-                    src = res.stdout.strip()
-                    if src:
-                        source_arg = [f'--device={src}']
+                    # Prefer G733 microphone source if present, otherwise default source
+                    res_list = subprocess.run(['pactl', 'list', 'sources', 'short'], capture_output=True, text=True, timeout=1)
+                    g733_src = None
+                    for line in res_list.stdout.splitlines():
+                        parts = line.split()
+                        if len(parts) >= 2 and 'G733' in parts[1] and 'input' in parts[1]:
+                            g733_src = parts[1]
+                            break
+                    if g733_src:
+                        source_arg = [f'--device={g733_src}']
+                    else:
+                        res = subprocess.run(['pactl', 'get-default-source'], capture_output=True, text=True, timeout=1)
+                        src = res.stdout.strip()
+                        if src:
+                            source_arg = [f'--device={src}']
                 except Exception:
                     pass
 
                 p = subprocess.Popen(
-                    ['parec'] + source_arg + ['--channels=1', '--rate=16000', '--format=s16le', '--raw'],
+                    ['parec'] + source_arg + ['--latency-msec=20', '--channels=1', '--rate=16000', '--format=s16le', '--raw'],
                     stdout=subprocess.PIPE,
                     stderr=subprocess.DEVNULL
                 )
                 
                 while not self.isInterruptionRequested():
-                    raw = p.stdout.read(1600)  # 50ms chunk
+                    raw = p.stdout.read(640)  # 20ms low-latency chunk (320 samples * 2 bytes)
                     if raw:
                         num_samples = len(raw) // 2
-                        samples = struct.unpack(f'<{num_samples}h', raw)
-                        peak = max(abs(s) for s in samples) if samples else 0
-                        if peak > 50:
+                        if num_samples > 0:
+                            samples = struct.unpack(f'<{num_samples}h', raw[:num_samples * 2])
+                            peak = max(abs(s) for s in samples) if samples else 0
+                        else:
+                            peak = 0
+                        if peak > 25:
                             import math
                             db = 20 * math.log10(peak / 32768.0)
-                            pct = max(0, min(100, int((db + 45) * 2.2)))
+                            pct = max(0, min(100, int((db + 52) * 2.15)))
                         else:
                             pct = 0
                         self.level_signal.emit(pct)
                     else:
                         if p.poll() is not None:
                             break  # parecord died, break to restart
-                        time.sleep(0.05)
+                        time.sleep(0.02)
                 try:
                     p.terminate()
                     p.wait(timeout=1)
@@ -1086,22 +1161,65 @@ class MicMeterThread(QThread):
                 logging.error(f"Error in MicMeterThread: {e}")
             
             # If it broke or threw an error, wait a bit before restarting to avoid spin lock
-            time.sleep(1.0)
+            time.sleep(0.5)
+
+
+AUTOSTART_DESKTOP_PATH = os.path.expanduser("~/.config/autostart/logitech-control-center.desktop")
+
+
+def configure_xdg_autostart(enabled, start_minimized=False):
+    """Creates or removes the XDG autostart .desktop entry for the application."""
+    try:
+        if enabled:
+            os.makedirs(os.path.dirname(AUTOSTART_DESKTOP_PATH), exist_ok=True)
+            script_path = os.path.abspath(__file__)
+            exec_cmd = f"/usr/bin/python3 {script_path}" + (" --minimized" if start_minimized else "")
+            desktop_content = (
+                "[Desktop Entry]\n"
+                "Type=Application\n"
+                "Name=Logitech G HUB Linux Control Suite\n"
+                "Comment=Logitech G502 Mouse & G733 Headset Control Center\n"
+                f"Exec={exec_cmd}\n"
+                f"Icon={ICON_PATH}\n"
+                "Terminal=false\n"
+                "Categories=Settings;HardwareSettings;Utility;\n"
+                "X-GNOME-Autostart-enabled=true\n"
+            )
+            with open(AUTOSTART_DESKTOP_PATH, "w") as f:
+                f.write(desktop_content)
+        else:
+            if os.path.exists(AUTOSTART_DESKTOP_PATH):
+                os.remove(AUTOSTART_DESKTOP_PATH)
+        return True
+    except Exception as e:
+        logging.error(f"Failed to configure XDG autostart: {e}")
+        return False
 
 
 def load_app_settings():
-    if os.path.exists(SETTINGS_PATH):
-        try:
-            with open(SETTINGS_PATH, 'r') as f:
-                return json.load(f)
-        except Exception:
-            pass
-    return {
+    defaults = {
         "theme": "Dark Void (Default)",
         "minimize_to_tray": True,
         "show_notifications": True,
-        "autostart_minimized": False
+        "autostart_enabled": os.path.exists(AUTOSTART_DESKTOP_PATH),
+        "autostart_minimized": False,
+        "active_profile": "Desktop: Default",
+        "mouse_rgb": [0, 168, 252],
+        "mouse_brightness": 100,
+        "mouse_rgb_mode": 1,
+        "headset_rgb": [0, 168, 252],
+        "headset_brightness": 100,
+        "headset_rgb_mode": 1
     }
+    if os.path.exists(SETTINGS_PATH):
+        try:
+            with open(SETTINGS_PATH, 'r') as f:
+                data = json.load(f)
+                defaults.update(data)
+                return defaults
+        except Exception:
+            pass
+    return defaults
 
 def save_app_settings(settings):
     os.makedirs(os.path.dirname(SETTINGS_PATH), exist_ok=True)
@@ -1294,12 +1412,32 @@ class SettingsDialog(QDialog):
         glayout.addWidget(self.chk_notif)
 
         layout.addWidget(grp)
+
+        auto_grp = QGroupBox("STARTUP && XDG AUTOSTART")
+        alayout = QVBoxLayout(auto_grp)
+        alayout.setSpacing(12)
+
+        self.chk_autostart = QCheckBox("Launch Logitech G HUB Control Suite automatically on system login")
+        self.chk_autostart.setChecked(self.settings.get("autostart_enabled", os.path.exists(AUTOSTART_DESKTOP_PATH)))
+        self.chk_autostart.toggled.connect(self.on_tray_setting_changed)
+        alayout.addWidget(self.chk_autostart)
+
+        self.chk_autostart_min = QCheckBox("Start minimized in System Tray on login")
+        self.chk_autostart_min.setChecked(self.settings.get("autostart_minimized", False))
+        self.chk_autostart_min.toggled.connect(self.on_tray_setting_changed)
+        alayout.addWidget(self.chk_autostart_min)
+
+        layout.addWidget(auto_grp)
         layout.addStretch()
         return tab
 
     def on_tray_setting_changed(self):
         self.settings["minimize_to_tray"] = self.chk_tray.isChecked()
         self.settings["show_notifications"] = self.chk_notif.isChecked()
+        if hasattr(self, 'chk_autostart'):
+            self.settings["autostart_enabled"] = self.chk_autostart.isChecked()
+            self.settings["autostart_minimized"] = self.chk_autostart_min.isChecked()
+            configure_xdg_autostart(self.chk_autostart.isChecked(), self.chk_autostart_min.isChecked())
         save_app_settings(self.settings)
 
     def create_about_tab(self):
@@ -1351,12 +1489,25 @@ class G502ControlApp(QMainWindow):
 
         self.mice_list = get_all_ratbag_mice()
         self.active_button_key = "G8"
+        self.gshift_active = False
         self.elevated_cards = []
+        self.mouse_rgb_color = tuple(self.app_settings.get("mouse_rgb", [0, 168, 252]))
+        self.mouse_brightness = int(self.app_settings.get("mouse_brightness", 100))
+        self.headset_rgb_color = tuple(self.app_settings.get("headset_rgb", [0, 168, 252]))
+        self.headset_brightness = int(self.app_settings.get("headset_brightness", 100))
 
-        # Create Interactive Hardware Stage early so inspector tabs can sync with it
+        # Create Interactive Hardware Stage & G HUB Home Page early
         self.stage_widget = HardwareStageWidget(DIAGRAM_PATH)
         self.stage_widget.buttonClicked.connect(self.select_button)
         self.stage_widget.deviceTileClicked.connect(lambda idx: self.combo_main_device.setCurrentIndex(idx))
+        self.stage_widget.gshiftToggled.connect(self.on_gshift_toggled)
+        self.stage_widget.set_mouse_rgb(*self.mouse_rgb_color)
+        self.stage_widget.set_headset_rgb(*self.headset_rgb_color)
+
+        self.home_widget = GHubHomeWidget(DIAGRAM_PATH)
+        self.home_widget.deviceCardClicked.connect(self.on_home_device_card_clicked)
+        self.home_widget.set_mouse_rgb(*self.mouse_rgb_color)
+        self.home_widget.set_headset_rgb(*self.headset_rgb_color)
 
         # Root container (0px margin G HUB full-bleed layout)
         main_widget = QWidget()
@@ -1373,33 +1524,46 @@ class G502ControlApp(QMainWindow):
         header_layout.setContentsMargins(12, 0, 14, 0)
         header_layout.setSpacing(12)
 
-        btn_hamburger = QPushButton()
-        btn_hamburger.setObjectName("btnIcon")
-        btn_hamburger.setFixedSize(32, 32)
+        self.btn_nav_back = QPushButton()
+        self.btn_nav_back.setObjectName("btnIcon")
+        self.btn_nav_back.setFixedSize(32, 32)
         nav_back_svg = os.path.join(ICONS_CACHE_DIR, "nav_back.svg")
         if os.path.exists(nav_back_svg):
-            btn_hamburger.setIcon(QIcon(nav_back_svg))
+            self.btn_nav_back.setIcon(QIcon(nav_back_svg))
         else:
-            btn_hamburger.setText("<")
-        btn_hamburger.setToolTip("Device Switcher & System Menu")
-        btn_hamburger.clicked.connect(self.show_hamburger_menu)
-        header_layout.addWidget(btn_hamburger)
+            self.btn_nav_back.setText("<")
+        self.btn_nav_back.setToolTip("Return to G HUB Home Screen")
+        self.btn_nav_back.clicked.connect(self.on_back_button_clicked)
+        header_layout.addWidget(self.btn_nav_back)
 
         title_layout = QHBoxLayout()
         title_layout.setSpacing(8)
-        subtitle_label = QLabel("PERSISTENT PROFILE:")
+        subtitle_label = QLabel("ACTIVE PROFILE:")
         subtitle_label.setObjectName("headerSubtitle")
-        title_label = QLabel("DESKTOP: Default")
-        title_label.setObjectName("headerTitle")
         title_layout.addWidget(subtitle_label)
-        title_layout.addWidget(title_label)
+
+        self.combo_app_profile = QComboBox()
+        self.combo_app_profile.setMinimumWidth(195)
+        self.combo_app_profile.setFixedHeight(30)
+        self.combo_app_profile.addItems([
+            "Desktop: Default",
+            "FPS Competitive",
+            "MOBA / Action RPG",
+            "Media & Productivity"
+        ])
+        saved_prof = self.app_settings.get("active_profile", "Desktop: Default")
+        p_idx = self.combo_app_profile.findText(saved_prof)
+        if p_idx >= 0:
+            self.combo_app_profile.setCurrentIndex(p_idx)
+        self.combo_app_profile.currentIndexChanged.connect(self.on_app_profile_switched)
+        title_layout.addWidget(self.combo_app_profile)
         header_layout.addLayout(title_layout)
 
         header_layout.addStretch()
 
         # Device Selector Dropdown
         self.combo_main_device = QComboBox()
-        self.combo_main_device.setMinimumWidth(240)
+        self.combo_main_device.setMinimumWidth(220)
         self.combo_main_device.setFixedHeight(30)
         self.combo_main_device.addItem("Logitech G502 HERO", "MOUSE")
         self.combo_main_device.addItem("Logitech G733 LIGHTSPEED", "HEADSET")
@@ -1443,8 +1607,12 @@ class G502ControlApp(QMainWindow):
 
         main_layout.addWidget(header)
 
-        # 2. Asymmetric Split-View Workspace: [48px Icon Rail] | [395px Inspector Drawer] | [Pure #000000 Hardware Stage]
-        workspace_layout = QHBoxLayout()
+        # 2. Root Stack: Page 0 = G HUB Home Screen (Device Grid), Page 1 = Split-View Device Studio
+        self.root_stack = QStackedWidget()
+        self.root_stack.addWidget(self.home_widget)  # index 0: G HUB Home Page
+
+        self.studio_container = QWidget()
+        workspace_layout = QHBoxLayout(self.studio_container)
         workspace_layout.setContentsMargins(0, 0, 0, 0)
         workspace_layout.setSpacing(0)
 
@@ -1480,7 +1648,7 @@ class G502ControlApp(QMainWindow):
         rail_layout.addStretch()
         workspace_layout.addWidget(self.left_rail)
 
-        # 2B. Left Inspector Drawer (395px wide, matte #18181B)
+        # 2B. Left Inspector Drawer (405px wide, matte #18181B, no redundant top tab bar)
         self.inspector_drawer = QFrame()
         self.inspector_drawer.setObjectName("inspectorDrawer")
         self.inspector_drawer.setFixedWidth(405)
@@ -1494,9 +1662,10 @@ class G502ControlApp(QMainWindow):
 
         self.device_stack = QStackedWidget()
 
-        # Mouse Inspector Tabs
+        # Mouse Inspector Tabs (TabBar hidden because left icon rail handles navigation)
         self.mouse_tabs = QTabWidget()
         self.mouse_tabs.tabBar().setUsesScrollButtons(False)
+        self.mouse_tabs.tabBar().hide()
         self.mouse_tabs.addTab(self.create_interactive_macro_tab(), "MACROS")
         self.mouse_tabs.addTab(self.create_dashboard_tab(), "SENSITIVITY")
         self.mouse_tabs.addTab(self.create_rgb_tab(), "LIGHTSYNC")
@@ -1504,9 +1673,10 @@ class G502ControlApp(QMainWindow):
         self.mouse_tabs.currentChanged.connect(self.on_inspector_tab_changed)
         self.device_stack.addWidget(self.mouse_tabs)
 
-        # Headset Inspector Tabs
+        # Headset Inspector Tabs (TabBar hidden because left icon rail handles navigation)
         self.headset_tabs = QTabWidget()
         self.headset_tabs.tabBar().setUsesScrollButtons(False)
+        self.headset_tabs.tabBar().hide()
         self.headset_tabs.addTab(self.create_headset_sound_tab(), "ACOUSTICS")
         self.headset_tabs.addTab(self.create_headset_mic_tab(), "MICROPHONE")
         self.headset_tabs.addTab(self.create_headset_rgb_tab(), "LIGHTSYNC")
@@ -1520,7 +1690,10 @@ class G502ControlApp(QMainWindow):
         # 2C. Right Interactive Hardware Stage (Pure #000000 Obsidian Canvas)
         workspace_layout.addWidget(self.stage_widget, stretch=1)
 
-        main_layout.addLayout(workspace_layout, stretch=1)
+        self.root_stack.addWidget(self.studio_container)  # index 1: Split-View Device Studio
+        self.root_stack.setCurrentIndex(1)  # Start in Device Studio; clicking '<-' opens G HUB Home Page
+
+        main_layout.addWidget(self.root_stack, stretch=1)
 
         self.sync_rail_and_drawer()
         self.refresh_elevation_shadows(current_theme)
@@ -1544,6 +1717,47 @@ class G502ControlApp(QMainWindow):
         self.timer.start(5000)
         self.periodic_refresh()
 
+    def on_back_button_clicked(self):
+        """Navigates between the Split-View Device Studio and the Logitech G HUB Home Page."""
+        if self.root_stack.currentIndex() == 1:
+            self.show_home_page()
+        else:
+            self.root_stack.setCurrentIndex(1)
+
+    def show_home_page(self):
+        """Shows the Logitech G HUB Home Screen with vertical device cards."""
+        self.root_stack.setCurrentIndex(0)
+
+    def on_home_device_card_clicked(self, dev_idx, tab_idx=0):
+        """Opens the selected device from the G HUB Home Page into the Split-View Studio."""
+        self.root_stack.setCurrentIndex(1)
+        self.combo_main_device.setCurrentIndex(dev_idx)
+        active_tabs = self.mouse_tabs if dev_idx == 0 else self.headset_tabs
+        if 0 <= tab_idx < active_tabs.count():
+            active_tabs.setCurrentIndex(tab_idx)
+        self.sync_rail_and_drawer()
+
+    def on_app_profile_switched(self, idx):
+        """Applies the selected persistent profile across DPI, EQ, and LIGHTSYNC."""
+        profile_name = self.combo_app_profile.currentText()
+        self.app_settings["active_profile"] = profile_name
+        save_app_settings(self.app_settings)
+
+        presets = {
+            "Desktop: Default": {"dpi": 800, "eq": "Flat 1:1", "rgb": (0, 168, 252)},
+            "FPS Competitive": {"dpi": 1200, "eq": "FPS Gaming", "rgb": (239, 68, 68)},
+            "MOBA / Action RPG": {"dpi": 1600, "eq": "Bass Boost", "rgb": (16, 185, 129)},
+            "Media & Productivity": {"dpi": 1000, "eq": "Cinematic", "rgb": (59, 130, 246)},
+        }
+        p = presets.get(profile_name, presets["Desktop: Default"])
+        if hasattr(self, 'dpi_slider'):
+            self.set_dpi(p["dpi"])
+        if hasattr(self, 'eq_sliders'):
+            self.apply_eq_preset(p["eq"])
+        r, g, b = p["rgb"]
+        self.apply_mouse_swatch(r, g, b)
+        self.apply_headset_swatch(r, g, b)
+
     def on_rail_button_clicked(self, idx):
         active_tabs = self.mouse_tabs if self.device_stack.currentIndex() == 0 else self.headset_tabs
         if 0 <= idx < active_tabs.count():
@@ -1558,7 +1772,8 @@ class G502ControlApp(QMainWindow):
         active_tabs = self.mouse_tabs if dev_idx == 0 else self.headset_tabs
         tab_idx = active_tabs.currentIndex()
 
-        mouse_titles = ["Assignments", "Sensitivity (DPI)", "LIGHTSYNC", "System Telemetry"]
+        gshift_suffix = " (G-SHIFT)" if (dev_idx == 0 and getattr(self, 'gshift_active', False)) else ""
+        mouse_titles = [f"Assignments{gshift_suffix}", "Sensitivity (DPI)", "LIGHTSYNC", "System Telemetry"]
         headset_titles = ["Acoustics", "Microphone", "LIGHTSYNC", "Hardware Telemetry"]
         titles = mouse_titles if dev_idx == 0 else headset_titles
         if 0 <= tab_idx < len(titles):
@@ -1576,7 +1791,10 @@ class G502ControlApp(QMainWindow):
                 rb.setIcon(QIcon(svg_path))
 
         if hasattr(self, 'stage_widget'):
-            self.stage_widget.set_device_mode("MOUSE" if dev_idx == 0 else "HEADSET")
+            self.stage_widget.set_stage_state(
+                device_mode=0 if dev_idx == 0 else 1,
+                sub_tab_index=tab_idx
+            )
 
     def register_card(self, card_widget):
         self.elevated_cards.append(card_widget)
@@ -1606,6 +1824,8 @@ class G502ControlApp(QMainWindow):
                 self.lbl_hs_mv.setText(f"CELL VOLTAGE: {mV} mV (HYSTERESIS 5% STEP)")
             if hasattr(self, 'stage_widget'):
                 self.stage_widget.set_battery_info(pct, status_str, mV)
+            if hasattr(self, 'home_widget'):
+                self.home_widget.set_battery_info(pct, status_str)
             if hasattr(self, 'tray_icon'):
                 self.tray_icon.setToolTip(f"Logitech Linux Control Suite — G733: {pct}% ({status_str})")
         else:
@@ -1751,7 +1971,7 @@ class G502ControlApp(QMainWindow):
 
     # ------------------ Mouse Customization Tabs ------------------
     def get_selected_ratbag_dev_id(self):
-        return "cheering-viscacha"
+        return find_ratbag_device_id("G502") or "hooting-chinchilla"
 
     def load_macro_config(self):
         try:
@@ -1777,7 +1997,15 @@ class G502ControlApp(QMainWindow):
         layout.setContentsMargins(0, 8, 0, 0)
 
         config_data = self.load_macro_config()
-        self.buttons_cfg = config_data.get("buttons", {})
+        self.default_buttons_cfg = config_data.get("buttons", {})
+        self.gshift_buttons_cfg = config_data.get("gshift_buttons", {
+            "G8": {"name": "G8 (DPI Up)", "action_type": "SPACE_LOOP", "hold_ms": 20, "delay_ms": 50, "custom_key": "KEY_SPACE"},
+            "TILT_LEFT": {"name": "Wheel Tilt Left", "action_type": "MIDDLE_CLICK_LOOP", "hold_ms": 20, "delay_ms": 50, "custom_key": "KEY_SPACE"},
+            "TILT_RIGHT": {"name": "Wheel Tilt Right", "action_type": "CLIPBOARD_WIN_V", "hold_ms": 20, "delay_ms": 50, "custom_key": "KEY_SPACE"},
+            "G7": {"name": "G7 (DPI Down)", "action_type": "CUSTOM_KEY_LOOP", "hold_ms": 20, "delay_ms": 50, "custom_key": "KEY_E"},
+            "G9": {"name": "G9 (Profile Select)", "action_type": "DISABLED", "hold_ms": 20, "delay_ms": 50, "custom_key": "KEY_SPACE"}
+        })
+        self.buttons_cfg = self.default_buttons_cfg
 
         # Section 1: Physical Button Selection List (1px structural divider rows)
         hdr_select = QLabel("PHYSICAL INPUT CHANNELS")
@@ -1896,7 +2124,8 @@ class G502ControlApp(QMainWindow):
             "G7": "G7 — RESOLUTION DOWN",
             "G9": "G9 — PROFILE CYCLE"
         }
-        self.selected_title_lbl.setText(f"CHANNEL: {btn_titles.get(btn_key, btn_key)}")
+        layer_tag = " [G-SHIFT]" if getattr(self, "gshift_active", False) else ""
+        self.selected_title_lbl.setText(f"CHANNEL: {btn_titles.get(btn_key, btn_key)}{layer_tag}")
 
         btn_data = self.buttons_cfg.get(btn_key, {})
         action_type = btn_data.get("action_type", "LEFT_CLICK_LOOP")
@@ -1968,8 +2197,22 @@ class G502ControlApp(QMainWindow):
                 getattr(self, 'dpi_slider', None).value() if hasattr(self, 'dpi_slider') else 800
             )
 
+    def on_gshift_toggled(self, active):
+        """Switches active macro mapping layer between DEFAULT and G-SHIFT."""
+        self.gshift_active = bool(active)
+        self.buttons_cfg = self.gshift_buttons_cfg if self.gshift_active else self.default_buttons_cfg
+        self.sync_rail_and_drawer()
+        self.select_button(self.active_button_key)
+
     def save_macro_config(self):
-        new_cfg = {"buttons": self.buttons_cfg}
+        new_cfg = {
+            "buttons": self.default_buttons_cfg,
+            "gshift_buttons": getattr(self, 'gshift_buttons_cfg', {}),
+            "active_layer": "G-SHIFT" if getattr(self, 'gshift_active', False) else "DEFAULT"
+        }
+        if getattr(self, 'gshift_active', False):
+            # When G-SHIFT is active and saved, deploy G-SHIFT bindings to active daemon buttons
+            new_cfg["buttons"] = self.gshift_buttons_cfg
         os.makedirs(os.path.dirname(CONFIG_PATH), exist_ok=True)
         with open(CONFIG_PATH, 'w') as f:
             json.dump(new_cfg, f, indent=4)
@@ -2079,35 +2322,140 @@ class G502ControlApp(QMainWindow):
         layout.setSpacing(12)
         layout.setContentsMargins(0, 8, 0, 0)
 
-        rgb_group = self.register_card(QGroupBox("G502 LIGHTSYNC && HARDWARE PROFILES"))
+        rgb_group = self.register_card(QGroupBox("G502 LIGHTSYNC CALIBRATION && ZONES"))
         rgb_layout = QVBoxLayout(rgb_group)
         rgb_layout.setSpacing(10)
         rgb_layout.setContentsMargins(0, 8, 0, 6)
 
-        lbl_info = QLabel("Control onboard RGB zones via OpenRGB or launch the ratbagd/Piper hardware profile utility:")
+        lbl_info = QLabel("Direct hardware RGB color and brightness calibration for G502 DPI & G-Logo zones:")
         lbl_info.setWordWrap(True)
         lbl_info.setObjectName("subText")
         rgb_layout.addWidget(lbl_info)
 
-        btn_apply_black = QPushButton("APPLY STEALTH (ALL LEDS OFF) PROFILE")
-        btn_apply_black.setObjectName("accentBtn")
-        btn_apply_black.setFixedHeight(36)
+        rgb_layout.addWidget(QLabel("TARGET LIGHTING ZONE"))
+        self.combo_mouse_zone = QComboBox()
+        self.combo_mouse_zone.addItem("All Zones (DPI + G Logo)", None)
+        self.combo_mouse_zone.addItem("Zone 0 — DPI Indicator", 0)
+        self.combo_mouse_zone.addItem("Zone 1 — G502 Emblem Logo", 1)
+        self.combo_mouse_zone.currentIndexChanged.connect(self.on_mouse_rgb_params_changed)
+        rgb_layout.addWidget(self.combo_mouse_zone)
+
+        rgb_layout.addWidget(QLabel("LIGHTING EFFECT MODE"))
+        self.combo_mouse_effect = QComboBox()
+        self.combo_mouse_effect.addItem("Static Color", 1)
+        self.combo_mouse_effect.addItem("Breathing Pulse", 2)
+        self.combo_mouse_effect.addItem("Spectrum Cycle", 3)
+        self.combo_mouse_effect.addItem("Stealth (LEDs OFF)", 0)
+        self.combo_mouse_effect.currentIndexChanged.connect(self.on_mouse_rgb_params_changed)
+        rgb_layout.addWidget(self.combo_mouse_effect)
+
+        b_row = QHBoxLayout()
+        b_row.addWidget(QLabel("LED BRIGHTNESS"))
+        r, g, b = self.mouse_rgb_color
+        self.lbl_mouse_brightness = QLabel(f"{self.mouse_brightness}%")
+        self.lbl_mouse_brightness.setObjectName("valueBadge")
+        b_row.addStretch()
+        b_row.addWidget(self.lbl_mouse_brightness)
+        rgb_layout.addLayout(b_row)
+
+        self.mouse_brightness_slider = QSlider(Qt.Orientation.Horizontal)
+        self.mouse_brightness_slider.setRange(0, 100)
+        self.mouse_brightness_slider.setValue(self.mouse_brightness)
+        self.mouse_brightness_slider.valueChanged.connect(self.on_mouse_brightness_changed)
+        rgb_layout.addWidget(self.mouse_brightness_slider)
+
+        col_row = QHBoxLayout()
+        self.lbl_mouse_color_hex = QLabel(f"COLOR: #{r:02X}{g:02X}{b:02X}")
+        self.lbl_mouse_color_hex.setObjectName("valueBadge")
+        col_row.addWidget(self.lbl_mouse_color_hex)
+        btn_pick_mouse = QPushButton("CHOOSE CUSTOM COLOR...")
+        btn_pick_mouse.setObjectName("accentBtn")
+        btn_pick_mouse.setFixedHeight(34)
+        btn_pick_mouse.clicked.connect(self.choose_mouse_rgb_color)
+        col_row.addWidget(btn_pick_mouse, stretch=1)
+        rgb_layout.addLayout(col_row)
+
+        rgb_layout.addWidget(QLabel("PRESET SWATCHES"))
+        m_grid = QGridLayout()
+        m_grid.setSpacing(6)
+        m_swatches = [
+            ("Cyan", 0, 168, 252),
+            ("Cobalt", 59, 130, 246),
+            ("Emerald", 16, 185, 129),
+            ("Crimson", 239, 68, 68),
+            ("Amber", 245, 158, 11),
+            ("Stealth OFF", 0, 0, 0)
+        ]
+        for idx_c, (cname, cr, cg, cb) in enumerate(m_swatches):
+            btn = QPushButton(cname)
+            btn.clicked.connect(lambda _, r0=cr, g0=cg, b0=cb: self.apply_mouse_swatch(r0, g0, b0))
+            m_grid.addWidget(btn, idx_c // 3, idx_c % 3)
+        rgb_layout.addLayout(m_grid)
+
+        btn_apply_black = QPushButton("APPLY GLOBAL STEALTH (ALL LEDS OFF)")
+        btn_apply_black.setFixedHeight(34)
         btn_apply_black.clicked.connect(self.apply_all_black_rgb)
         rgb_layout.addWidget(btn_apply_black)
-
-        btn_piper_gui = QPushButton("LAUNCH PIPER HARDWARE UTILITY")
-        btn_piper_gui.setFixedHeight(36)
-        btn_piper_gui.clicked.connect(lambda: subprocess.Popen(['piper']))
-        rgb_layout.addWidget(btn_piper_gui)
-
-        btn_openrgb_gui = QPushButton("LAUNCH OPENRGB CONTROLLER")
-        btn_openrgb_gui.setFixedHeight(36)
-        btn_openrgb_gui.clicked.connect(lambda: subprocess.Popen(['openrgb', '--gui']))
-        rgb_layout.addWidget(btn_openrgb_gui)
 
         layout.addWidget(rgb_group)
         layout.addStretch()
         return tab
+
+    def apply_mouse_swatch(self, r, g, b):
+        self.mouse_rgb_color = (r, g, b)
+        if hasattr(self, 'lbl_mouse_color_hex'):
+            self.lbl_mouse_color_hex.setText(f"COLOR: #{r:02X}{g:02X}{b:02X}")
+        mode = 0 if (r == 0 and g == 0 and b == 0) else (self.combo_mouse_effect.currentData() if hasattr(self, 'combo_mouse_effect') else 1)
+        if mode == 0 and (r or g or b):
+            mode = 1
+        zone = self.combo_mouse_zone.currentData() if hasattr(self, 'combo_mouse_zone') else None
+        set_g502_rgb(r, g, b, mode=mode, brightness=self.mouse_brightness, zone=zone)
+        scale = self.mouse_brightness / 100.0
+        vr, vg, vb = int(r * scale), int(g * scale), int(b * scale)
+        if hasattr(self, 'stage_widget'):
+            self.stage_widget.set_mouse_rgb(vr, vg, vb)
+        if hasattr(self, 'home_widget'):
+            self.home_widget.set_mouse_rgb(vr, vg, vb)
+        self.app_settings["mouse_rgb"] = [r, g, b]
+        save_app_settings(self.app_settings)
+
+    def on_mouse_brightness_changed(self, val):
+        self.mouse_brightness = int(val)
+        self.lbl_mouse_brightness.setText(f"{val}%")
+        self.app_settings["mouse_brightness"] = self.mouse_brightness
+        r, g, b = self.mouse_rgb_color
+        scale = self.mouse_brightness / 100.0
+        vr, vg, vb = int(r * scale), int(g * scale), int(b * scale)
+        if hasattr(self, 'stage_widget'):
+            self.stage_widget.set_mouse_rgb(vr, vg, vb)
+        if hasattr(self, 'home_widget'):
+            self.home_widget.set_mouse_rgb(vr, vg, vb)
+        if not hasattr(self, '_mouse_rgb_timer'):
+            self._mouse_rgb_timer = QTimer(self)
+            self._mouse_rgb_timer.setSingleShot(True)
+            self._mouse_rgb_timer.timeout.connect(self.on_mouse_rgb_params_changed)
+        self._mouse_rgb_timer.start(80)
+
+    def on_mouse_rgb_params_changed(self, *_):
+        r, g, b = self.mouse_rgb_color
+        mode = self.combo_mouse_effect.currentData() if hasattr(self, 'combo_mouse_effect') else 1
+        zone = self.combo_mouse_zone.currentData() if hasattr(self, 'combo_mouse_zone') else None
+        if mode == 0:
+            set_g502_rgb(0, 0, 0, mode=0, brightness=0, zone=zone)
+            if hasattr(self, 'stage_widget'):
+                self.stage_widget.set_mouse_rgb(0, 0, 0)
+        else:
+            set_g502_rgb(r, g, b, mode=mode, brightness=self.mouse_brightness, zone=zone)
+            scale = self.mouse_brightness / 100.0
+            if hasattr(self, 'stage_widget'):
+                self.stage_widget.set_mouse_rgb(int(r * scale), int(g * scale), int(b * scale))
+        save_app_settings(self.app_settings)
+
+    def choose_mouse_rgb_color(self):
+        r, g, b = self.mouse_rgb_color
+        color = QColorDialog.getColor(QColor(r, g, b), self, "Select G502 LIGHTSYNC RGB Color")
+        if color.isValid():
+            self.apply_mouse_swatch(color.red(), color.green(), color.blue())
 
     def create_logs_tab(self):
         tab = QWidget()
@@ -2418,15 +2766,23 @@ class G502ControlApp(QMainWindow):
         layout.setSpacing(12)
         layout.setContentsMargins(0, 8, 0, 0)
 
-        rgb_group = self.register_card(QGroupBox("DUAL-ZONE LIGHTSYNC CONTROLLER (HID++)"))
+        rgb_group = self.register_card(QGroupBox("DUAL-ZONE LIGHTSYNC CONTROLLER (HID++ / RATBAG)"))
         rlayout = QVBoxLayout(rgb_group)
         rlayout.setSpacing(10)
         rlayout.setContentsMargins(0, 8, 0, 6)
 
-        lbl_rgb_desc = QLabel("Direct HID++ 2.0 addressing for upper and lower G733 front lightstrips:")
+        lbl_rgb_desc = QLabel("Standalone color and brightness calibration for upper and lower G733 front lightstrips:")
         lbl_rgb_desc.setWordWrap(True)
         lbl_rgb_desc.setObjectName("subText")
         rlayout.addWidget(lbl_rgb_desc)
+
+        rlayout.addWidget(QLabel("TARGET LIGHTSTRIP ZONE"))
+        self.combo_hs_zone = QComboBox()
+        self.combo_hs_zone.addItem("All Zones (Upper + Lower Strips)", None)
+        self.combo_hs_zone.addItem("Zone 0 — Upper Lightstrip", 0)
+        self.combo_hs_zone.addItem("Zone 1 — Lower Lightstrip", 1)
+        self.combo_hs_zone.currentIndexChanged.connect(self.on_hs_effect_changed)
+        rlayout.addWidget(self.combo_hs_zone)
 
         rlayout.addWidget(QLabel("LIGHTING EFFECT MODE"))
         self.combo_hs_effect = QComboBox()
@@ -2437,11 +2793,31 @@ class G502ControlApp(QMainWindow):
         self.combo_hs_effect.currentIndexChanged.connect(self.on_hs_effect_changed)
         rlayout.addWidget(self.combo_hs_effect)
 
+        hb_row = QHBoxLayout()
+        hb_row.addWidget(QLabel("LIGHTSTRIP BRIGHTNESS"))
+        hr, hg, hb = self.headset_rgb_color
+        self.lbl_hs_brightness = QLabel(f"{self.headset_brightness}%")
+        self.lbl_hs_brightness.setObjectName("valueBadge")
+        hb_row.addStretch()
+        hb_row.addWidget(self.lbl_hs_brightness)
+        rlayout.addLayout(hb_row)
+
+        self.hs_brightness_slider = QSlider(Qt.Orientation.Horizontal)
+        self.hs_brightness_slider.setRange(0, 100)
+        self.hs_brightness_slider.setValue(self.headset_brightness)
+        self.hs_brightness_slider.valueChanged.connect(self.on_hs_brightness_changed)
+        rlayout.addWidget(self.hs_brightness_slider)
+
+        hcol_row = QHBoxLayout()
+        self.lbl_hs_color_hex = QLabel(f"COLOR: #{hr:02X}{hg:02X}{hb:02X}")
+        self.lbl_hs_color_hex.setObjectName("valueBadge")
+        hcol_row.addWidget(self.lbl_hs_color_hex)
         btn_color = QPushButton("SELECT CUSTOM RGB COLOR...")
         btn_color.setObjectName("accentBtn")
-        btn_color.setFixedHeight(36)
+        btn_color.setFixedHeight(34)
         btn_color.clicked.connect(self.choose_headset_rgb_color)
-        rlayout.addWidget(btn_color)
+        hcol_row.addWidget(btn_color, stretch=1)
+        rlayout.addLayout(hcol_row)
 
         rlayout.addWidget(QLabel("PRESET SWATCHES"))
         palette_grid = QGridLayout()
@@ -2465,32 +2841,65 @@ class G502ControlApp(QMainWindow):
         return tab
 
     def apply_headset_swatch(self, r, g, b):
+        self.headset_rgb_color = (r, g, b)
+        if hasattr(self, 'lbl_hs_color_hex'):
+            self.lbl_hs_color_hex.setText(f"COLOR: #{r:02X}{g:02X}{b:02X}")
         mode = 1 if (r or g or b) else 0
-        set_g733_rgb(r, g, b, mode=mode)
+        zone = self.combo_hs_zone.currentData() if hasattr(self, 'combo_hs_zone') else None
+        set_g733_rgb(r, g, b, mode=mode, brightness=self.headset_brightness, zone=zone)
+        scale = self.headset_brightness / 100.0
+        vr, vg, vb = int(r * scale), int(g * scale), int(b * scale)
         if hasattr(self, 'stage_widget'):
-            self.stage_widget.set_headset_rgb(r, g, b)
+            self.stage_widget.set_headset_rgb(vr, vg, vb)
+        if hasattr(self, 'home_widget'):
+            self.home_widget.set_headset_rgb(vr, vg, vb)
+        self.app_settings["headset_rgb"] = [r, g, b]
+        save_app_settings(self.app_settings)
+
+    def on_hs_brightness_changed(self, val):
+        self.headset_brightness = int(val)
+        self.lbl_hs_brightness.setText(f"{val}%")
+        self.app_settings["headset_brightness"] = self.headset_brightness
+        r, g, b = self.headset_rgb_color
+        scale = self.headset_brightness / 100.0
+        vr, vg, vb = int(r * scale), int(g * scale), int(b * scale)
+        if hasattr(self, 'stage_widget'):
+            self.stage_widget.set_headset_rgb(vr, vg, vb)
+        if hasattr(self, 'home_widget'):
+            self.home_widget.set_headset_rgb(vr, vg, vb)
+        if not hasattr(self, '_hs_rgb_timer'):
+            self._hs_rgb_timer = QTimer(self)
+            self._hs_rgb_timer.setSingleShot(True)
+            self._hs_rgb_timer.timeout.connect(lambda: self.on_hs_effect_changed(0))
+        self._hs_rgb_timer.start(80)
 
     def on_hs_effect_changed(self, idx):
-        mode = self.combo_hs_effect.currentData()
+        mode = self.combo_hs_effect.currentData() if hasattr(self, 'combo_hs_effect') else 1
+        zone = self.combo_hs_zone.currentData() if hasattr(self, 'combo_hs_zone') else None
+        r, g, b = self.headset_rgb_color
         if mode == 0:
-            set_g733_rgb(0, 0, 0, mode=0)
+            set_g733_rgb(0, 0, 0, mode=0, brightness=0, zone=zone)
             if hasattr(self, 'stage_widget'):
                 self.stage_widget.set_headset_rgb(0, 0, 0)
         elif mode == 3:
-            set_g733_rgb(0, 255, 255, mode=3)
+            set_g733_rgb(0, 255, 255, mode=3, brightness=self.headset_brightness, zone=zone)
             if hasattr(self, 'stage_widget'):
                 self.stage_widget.set_headset_rgb(0, 255, 255)
         else:
-            set_g733_rgb(56, 189, 248, mode=mode)
+            if r == 0 and g == 0 and b == 0:
+                r, g, b = 56, 189, 248
+                self.headset_rgb_color = (r, g, b)
+            set_g733_rgb(r, g, b, mode=mode, brightness=self.headset_brightness, zone=zone)
+            scale = self.headset_brightness / 100.0
             if hasattr(self, 'stage_widget'):
-                self.stage_widget.set_headset_rgb(56, 189, 248)
+                self.stage_widget.set_headset_rgb(int(r * scale), int(g * scale), int(b * scale))
+        save_app_settings(self.app_settings)
 
     def choose_headset_rgb_color(self):
-        color = QColorDialog.getColor(QColor("#00A8FC"), self, "Select G733 LIGHTSYNC RGB Color")
+        r, g, b = self.headset_rgb_color
+        color = QColorDialog.getColor(QColor(r, g, b), self, "Select G733 LIGHTSYNC RGB Color")
         if color.isValid():
-            set_g733_rgb(color.red(), color.green(), color.blue(), mode=1)
-            if hasattr(self, 'stage_widget'):
-                self.stage_widget.set_headset_rgb(color.red(), color.green(), color.blue())
+            self.apply_headset_swatch(color.red(), color.green(), color.blue())
 
     # ------------------ Battery & Info Tab ------------------
     def create_headset_info_tab(self):
@@ -2584,10 +2993,18 @@ class G502ControlApp(QMainWindow):
         self.refresh_logs()
 
     def on_dpi_slider_changed(self, val):
-        self.dpi_val_label.setText(f"{val} DPI")
-        self.set_dpi(val)
+        snapped = max(400, min(4000, int(round(val / 50.0) * 50)))
+        self.dpi_val_label.setText(f"{snapped} DPI")
+        if hasattr(self, 'stage_widget'):
+            self.stage_widget.set_mouse_state(self.active_button_key, self.buttons_cfg, snapped)
+        if not hasattr(self, '_dpi_debounce_timer'):
+            self._dpi_debounce_timer = QTimer(self)
+            self._dpi_debounce_timer.setSingleShot(True)
+            self._dpi_debounce_timer.timeout.connect(lambda: self.set_dpi(int(round(self.dpi_slider.value() / 50.0) * 50)))
+        self._dpi_debounce_timer.start(80)
 
     def set_dpi(self, dpi):
+        dpi = max(400, min(4000, int(round(dpi / 50.0) * 50)))
         self.dpi_slider.blockSignals(True)
         self.dpi_slider.setValue(dpi)
         self.dpi_slider.blockSignals(False)
@@ -2595,12 +3012,16 @@ class G502ControlApp(QMainWindow):
 
         if hasattr(self, 'stage_widget'):
             self.stage_widget.set_mouse_state(self.active_button_key, self.buttons_cfg, dpi)
+        if hasattr(self, 'home_widget'):
+            self.home_widget.set_mouse_dpi(dpi)
 
         dev_id = self.get_selected_ratbag_dev_id()
         if dev_id:
+            subprocess.run(['ratbagctl', dev_id, 'profile', 'active', 'set', '0'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            subprocess.run(['ratbagctl', dev_id, 'dpi', 'set', str(dpi)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             for p in [0, 1, 2]:
-                subprocess.run(['ratbagctl', dev_id, 'profile', str(p), 'resolution', '0', 'dpi', 'set', str(dpi)], stdout=subprocess.DEVNULL)
-                subprocess.run(['ratbagctl', dev_id, 'profile', str(p), 'resolution', 'active', 'set', '0'], stdout=subprocess.DEVNULL)
+                subprocess.run(['ratbagctl', dev_id, 'profile', str(p), 'resolution', '0', 'dpi', 'set', str(dpi)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                subprocess.run(['ratbagctl', dev_id, 'profile', str(p), 'resolution', 'active', 'set', '0'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
     def get_kwin_mouse_paths(self):
         paths = []
@@ -2611,11 +3032,11 @@ class G502ControlApp(QMainWindow):
             for p in all_paths:
                 try:
                     name = subprocess.check_output(['busctl', '--user', 'get-property', 'org.kde.KWin', p, 'org.kde.KWin.InputDevice', 'name'], text=True)
-                    if 'G502' in name:
+                    if 'G502' in name or 'Mouse' in name:
                         paths.append(p)
-                except:
+                except Exception:
                     pass
-        except:
+        except Exception:
             pass
         if not paths:
             paths = ['/org/kde/KWin/InputDevice/event8']
@@ -2662,8 +3083,12 @@ class G502ControlApp(QMainWindow):
         QMessageBox.information(self, "Calibration Applied", f"Successfully calibrated!\n\nTarget: {px_per_cm} px/cm (~{target_dpi:.2f} DPI)\nHardware DPI set to {hardware_dpi}\nKWin Multiplier set to {scale_factor:.5f}\n(Libinput setting: {accel_setting:.5f})\n\nAcceleration curve disabled (Flat/1:1).")
 
     def apply_all_black_rgb(self):
-        subprocess.run(['openrgb', '--profile', 'ALL Black'], stdout=subprocess.DEVNULL)
-        set_g733_rgb(0, 0, 0, mode=0)
+        subprocess.run(['openrgb', '--profile', 'ALL Black'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        set_g502_rgb(0, 0, 0, mode=0, brightness=0)
+        set_g733_rgb(0, 0, 0, mode=0, brightness=0)
+        if hasattr(self, 'stage_widget'):
+            self.stage_widget.set_mouse_rgb(0, 0, 0)
+            self.stage_widget.set_headset_rgb(0, 0, 0)
         QMessageBox.information(self, "OpenRGB & HID++", "Applied 'ALL Black' profile successfully!")
 
     def refresh_logs(self):
@@ -2679,7 +3104,10 @@ def main():
     if os.path.exists(ICON_PATH):
         app.setWindowIcon(QIcon(ICON_PATH))
     window = G502ControlApp()
-    window.show()
+    if "--minimized" in sys.argv or window.app_settings.get("autostart_minimized", False):
+        window.hide()
+    else:
+        window.show()
     sys.exit(app.exec())
 
 if __name__ == "__main__":

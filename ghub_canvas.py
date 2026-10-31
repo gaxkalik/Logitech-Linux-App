@@ -144,8 +144,10 @@ class HardwareStageWidget(QWidget):
 
     button_callout_clicked = pyqtSignal(str)
     device_tile_clicked = pyqtSignal(int)
+    gshift_toggled = pyqtSignal(bool)
     buttonClicked = button_callout_clicked
     deviceTileClicked = device_tile_clicked
+    gshiftToggled = gshift_toggled
 
     def set_device_mode(self, mode):
         if isinstance(mode, str):
@@ -180,6 +182,10 @@ class HardwareStageWidget(QWidget):
     def set_headset_rgb(self, r, g, b):
         self.set_stage_state(rgb_tuple=(r, g, b))
 
+    def set_mouse_rgb(self, r, g, b):
+        self.mouse_rgb_color = QColor(r, g, b)
+        self.update()
+
     def __init__(self, diagram_path, parent=None):
         super().__init__(parent)
         self.setMinimumWidth(520)
@@ -195,6 +201,7 @@ class HardwareStageWidget(QWidget):
         self.current_speed_scale = 0.600
         self.accent_color = QColor("#00A8FC")
         self.rgb_color = QColor("#00A8FC")
+        self.mouse_rgb_color = QColor("#00A8FC")
         self.eq_bands_10 = [0] * 10
         self.battery_pct = 85
         self.battery_mv = 3950
@@ -202,9 +209,11 @@ class HardwareStageWidget(QWidget):
         self.sidetone_pct = 30
         self.mic_gain_pct = 100
         self.mic_level_pct = 0
+        self.gshift_active = False
 
         self._callout_hitboxes = {}
         self._device_tile_hitboxes = {}
+        self._gshift_hitbox = QRectF()
 
     def set_stage_state(
         self,
@@ -259,6 +268,11 @@ class HardwareStageWidget(QWidget):
 
     def mousePressEvent(self, event):
         pos = event.position()
+        if self.device_mode == 0 and self._gshift_hitbox.contains(pos):
+            self.gshift_active = not self.gshift_active
+            self.update()
+            self.gshift_toggled.emit(self.gshift_active)
+            return
         for key, rect in self._callout_hitboxes.items():
             if rect.contains(pos):
                 self.button_callout_clicked.emit(key)
@@ -305,9 +319,9 @@ class HardwareStageWidget(QWidget):
 
         # Draw G logo RGB accent inside mouse shell
         p.setPen(Qt.PenStyle.NoPen)
-        g_col = self.rgb_color if self.rgb_color.lightness() > 15 else self.accent_color
+        g_col = self.mouse_rgb_color
         p.setBrush(QBrush(g_col))
-        p.drawEllipse(QPointF(mx + 82, my + 225), 5, 5)
+        p.drawEllipse(QPointF(mx + 82, my + 225), 5.5, 5.5)
 
         # Interactive Callouts (exact G HUB style: white dot on button + leader line + [M] label)
         action_short = {
@@ -426,18 +440,20 @@ class HardwareStageWidget(QWidget):
             p.setBrush(self.accent_color)
             p.drawPolygon(diamond)
         else:
-            # DEFAULT / G-SHIFT pill indicator (like Image 3)
+            # Interactive DEFAULT / G-SHIFT pill indicator
             gs_y = h - 125
+            self._gshift_hitbox = QRectF(cx - 115, gs_y - 4, 210, 28)
             p.setFont(QFont("Inter", 9, QFont.Weight.Bold))
-            p.setPen(QColor("#FFFFFF"))
+            p.setPen(QColor("#71717A") if self.gshift_active else QColor("#FFFFFF"))
             p.drawText(QRectF(cx - 110, gs_y, 70, 20), Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter, "DEFAULT")
             p.setPen(Qt.PenStyle.NoPen)
-            p.setBrush(QColor("#3F3F46"))
+            p.setBrush(self.accent_color if self.gshift_active else QColor("#3F3F46"))
             p.drawRoundedRect(QRectF(cx - 32, gs_y + 3, 28, 14), 7, 7)
             p.setBrush(QColor("#FFFFFF"))
-            p.drawEllipse(QPointF(cx - 25, gs_y + 10), 5, 5)
-            p.setPen(QColor("#71717A"))
-            p.drawText(QRectF(cx + 4, gs_y, 70, 20), Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter, "G-SHIFT")
+            knob_x = (cx - 11) if self.gshift_active else (cx - 25)
+            p.drawEllipse(QPointF(knob_x, gs_y + 10), 5, 5)
+            p.setPen(self.accent_color if self.gshift_active else QColor("#71717A"))
+            p.drawText(QRectF(cx + 4, gs_y, 80, 20), Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter, "G-SHIFT")
 
     def _paint_headset_stage(self, p, w, h):
         cx, cy = w * 0.50, h * 0.34
@@ -572,3 +588,193 @@ class HardwareStageWidget(QWidget):
             Qt.AlignmentFlag.AlignCenter,
             "Select active hardware device to configure assignments, acoustics, or LIGHTSYNC.",
         )
+
+
+class GHubHomeWidget(QWidget):
+    """
+    Logitech G HUB Home Screen (Device Selection Grid):
+      - Pure #000000 obsidian canvas
+      - Centered row of tall vertical #18181B hardware cards (G502 HERO, G733 LIGHTSPEED)
+      - Each card displays device name, status/battery/DPI telemetry, high-contrast device render,
+        and bottom-right LIGHTSYNC quick-action button + settings gear button.
+    """
+
+    deviceCardClicked = pyqtSignal(int, int)  # (device_index, initial_tab_index)
+    deviceGearClicked = pyqtSignal(int)
+
+    def __init__(self, diagram_path, parent=None):
+        super().__init__(parent)
+        self.setMouseTracking(True)
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.mouse_pixmap = build_dark_g502_pixmap(diagram_path)
+        self.accent_color = QColor("#00A8FC")
+        self.mouse_rgb_color = QColor("#00A8FC")
+        self.headset_rgb_color = QColor("#00A8FC")
+        self.mouse_dpi = 800
+        self.battery_pct = 95
+        self.battery_status = "Discharging"
+        self.hovered_card = -1
+
+        self._card_hitboxes = {}
+        self._lightsync_hitboxes = {}
+        self._gear_hitboxes = {}
+
+    def set_mouse_dpi(self, dpi):
+        self.mouse_dpi = dpi
+        self.update()
+
+    def set_battery_info(self, pct, status_str):
+        if pct is not None:
+            self.battery_pct = pct
+            self.battery_status = status_str
+            self.update()
+
+    def set_mouse_rgb(self, r, g, b):
+        self.mouse_rgb_color = QColor(r, g, b)
+        self.update()
+
+    def set_headset_rgb(self, r, g, b):
+        self.headset_rgb_color = QColor(r, g, b)
+        self.update()
+
+    def mouseMoveEvent(self, event):
+        pos = event.position()
+        new_hover = -1
+        for idx, rect in self._card_hitboxes.items():
+            if rect.contains(pos):
+                new_hover = idx
+                break
+        if new_hover != self.hovered_card:
+            self.hovered_card = new_hover
+            self.update()
+        super().mouseMoveEvent(event)
+
+    def mousePressEvent(self, event):
+        pos = event.position()
+        for idx, rect in self._gear_hitboxes.items():
+            if rect.contains(pos):
+                self.deviceCardClicked.emit(idx, 3)  # Open Telemetry / Hardware Status tab
+                return
+        for idx, rect in self._lightsync_hitboxes.items():
+            if rect.contains(pos):
+                self.deviceCardClicked.emit(idx, 2)  # Open LIGHTSYNC tab directly
+                return
+        for idx, rect in self._card_hitboxes.items():
+            if rect.contains(pos):
+                self.deviceCardClicked.emit(idx, 0)  # Open primary Assignments / Acoustics tab
+                return
+        super().mousePressEvent(event)
+
+    def paintEvent(self, event):
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+        p.setRenderHint(QPainter.RenderHint.TextAntialiasing, True)
+
+        w, h = self.width(), self.height()
+        p.fillRect(0, 0, w, h, QColor("#000000"))
+
+        self._card_hitboxes.clear()
+        self._lightsync_hitboxes.clear()
+        self._gear_hitboxes.clear()
+
+        card_w, card_h = 265, 420
+        gap = 24
+        total_w = card_w * 2 + gap
+        start_x = (w - total_w) / 2.0
+        card_y = max(40.0, (h - card_h) / 2.0 - 15.0)
+
+        cards = [
+            (0, "G502 HERO", f"1000Hz  •  {self.mouse_dpi} DPI"),
+            (1, "G733 LIGHTSPEED", f"{self.battery_pct}%  •  {self.battery_status.upper()}"),
+        ]
+
+        for idx, title, subtitle in cards:
+            cx = start_x + idx * (card_w + gap)
+            rect = QRectF(cx, card_y, card_w, card_h)
+            self._card_hitboxes[idx] = rect
+
+            is_hover = (self.hovered_card == idx)
+            p.setPen(QPen(self.accent_color if is_hover else QColor("#27272A"), 1.5 if is_hover else 1.0))
+            p.setBrush(QColor("#1E1E23") if is_hover else QColor("#18181B"))
+            p.drawRoundedRect(rect, 6, 6)
+
+            # Card Title (Top Left, bold grotesque like "PRO WIRELESS" / "G915 TKL")
+            p.setFont(QFont("Inter", 13, QFont.Weight.Bold))
+            p.setPen(QColor("#F4F4F5"))
+            p.drawText(QRectF(cx + 22, card_y + 22, card_w - 44, 24), Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter, title)
+
+            # Subtitle / Telemetry row
+            p.setFont(QFont("JetBrains Mono", 9, QFont.Weight.DemiBold))
+            p.setPen(QColor("#A1A1AA"))
+            p.drawText(QRectF(cx + 22, card_y + 48, card_w - 44, 18), Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter, subtitle)
+
+            # Center Hardware Illustration
+            if idx == 0:
+                if self.mouse_pixmap:
+                    scaled = self.mouse_pixmap.scaledToHeight(235, Qt.TransformationMode.SmoothTransformation)
+                    mx = cx + (card_w - scaled.width()) / 2.0
+                    my = card_y + 92
+                    p.drawPixmap(int(mx), int(my), scaled)
+                    # Live G logo RGB dot on mouse
+                    p.setPen(Qt.PenStyle.NoPen)
+                    p.setBrush(self.mouse_rgb_color)
+                    p.drawEllipse(QPointF(mx + scaled.width() * 0.38, my + scaled.height() * 0.65), 4.5, 4.5)
+            else:
+                # G733 Vector Illustration on Card 1
+                p.save()
+                p.translate(cx + card_w / 2.0, card_y + 205)
+                band_path = QPainterPath()
+                band_path.moveTo(-66, 8)
+                band_path.cubicTo(-66, -82, 66, -82, 66, 8)
+                p.setPen(QPen(QColor("#2E2E34"), 12, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
+                p.drawPath(band_path)
+
+                strap_path = QPainterPath()
+                strap_path.moveTo(-54, -6)
+                strap_path.cubicTo(-38, -52, 38, -52, 54, -6)
+                p.setPen(QPen(self.accent_color, 3.5, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
+                p.drawPath(strap_path)
+
+                for sign in (-1, 1):
+                    p.save()
+                    p.translate(sign * 64, 28)
+                    p.rotate(sign * -8)
+                    p.setPen(QPen(QColor("#3F3F46"), 1.5))
+                    p.setBrush(QColor("#111114"))
+                    p.drawRoundedRect(QRectF(-20, -36, 40, 72), 12, 12)
+                    p.setPen(Qt.PenStyle.NoPen)
+                    p.setBrush(self.headset_rgb_color)
+                    strip_x = -16 if sign == -1 else 11
+                    p.drawRoundedRect(QRectF(strip_x, -24, 5, 20), 2.5, 2.5)
+                    p.drawRoundedRect(QRectF(strip_x, 4, 5, 20), 2.5, 2.5)
+                    p.restore()
+
+                p.setPen(QPen(QColor("#52525B"), 3.5, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
+                p.drawLine(QPointF(-74, 52), QPointF(-34, 74))
+                p.setBrush(self.accent_color)
+                p.drawEllipse(QPointF(-32, 75), 3.5, 3.5)
+                p.restore()
+
+            # Bottom-Right Action Buttons (Blue LIGHTSYNC icon badge + Dark Gear icon badge, just like G HUB reference)
+            btn_size = 32
+            gear_rect = QRectF(cx + card_w - 20 - btn_size, card_y + card_h - 20 - btn_size, btn_size, btn_size)
+            ls_rect = QRectF(gear_rect.left() - 8 - btn_size, gear_rect.top(), btn_size, btn_size)
+            self._lightsync_hitboxes[idx] = ls_rect
+            self._gear_hitboxes[idx] = gear_rect
+
+            # 1. Cyan LIGHTSYNC Quick-Action Button
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(self.accent_color)
+            p.drawRoundedRect(ls_rect, 4, 4)
+            p.setPen(QPen(QColor("#FFFFFF"), 1.6))
+            p.setBrush(Qt.BrushStyle.NoBrush)
+            p.drawEllipse(ls_rect.center(), 5.5, 5.5)
+
+            # 2. Dark Settings/Telemetry Gear Button
+            p.setPen(QPen(QColor("#323238"), 1.0))
+            p.setBrush(QColor("#222226"))
+            p.drawRoundedRect(gear_rect, 4, 4)
+            p.setPen(QPen(QColor("#D4D4D8"), 1.5))
+            p.setBrush(Qt.BrushStyle.NoBrush)
+            p.drawEllipse(gear_rect.center(), 4.5, 4.5)
+

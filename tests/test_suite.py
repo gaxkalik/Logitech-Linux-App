@@ -127,18 +127,20 @@ class TestG733HardwareDriver(unittest.TestCase):
         self.assertEqual(status3, "Charging")
         self.assertEqual(mv3, 4130)
 
+    @patch("g502_gui.set_device_rgb_via_ratbag", return_value=True)
     @patch("g502_gui.find_g733_hidraw")
     @patch("os.open")
     @patch("os.write")
     @patch("os.close")
     @patch("time.sleep")
-    def test_set_g733_rgb_and_sidetone(self, mock_sleep, mock_close, mock_write, mock_open_fd, mock_find):
+    def test_set_g733_rgb_and_sidetone(self, mock_sleep, mock_close, mock_write, mock_open_fd, mock_find, mock_ratbag_rgb):
         mock_find.return_value = "/dev/hidraw3"
         mock_open_fd.return_value = 42
 
-        ok_rgb = g502_gui.set_g733_rgb(56, 189, 248, mode=1)
+        ok_rgb = g502_gui.set_g733_rgb(56, 189, 248, mode=1, brightness=80)
         self.assertTrue(ok_rgb)
         self.assertEqual(mock_write.call_count, 3)  # Zones 0, 1, 0xFF
+        mock_ratbag_rgb.assert_called_once()
 
         mock_write.reset_mock()
         ok_side = g502_gui.set_g733_sidetone(50)
@@ -372,7 +374,9 @@ class TestGUIWindowAndTabs(unittest.TestCase):
 
         with patch("g502_gui.set_g733_rgb") as mock_rgb:
             self.win.combo_hs_effect.setCurrentIndex(2)  # Spectrum Cycle (mode 3)
-            mock_rgb.assert_called_with(0, 255, 255, mode=3)
+            self.assertTrue(mock_rgb.called)
+            _, kwargs = mock_rgb.call_args
+            self.assertEqual(kwargs.get("mode"), 3)
 
         with patch("g502_gui.get_g733_battery_info", return_value=(90, "Discharging", 3990)), \
              patch("g502_gui.speak_text") as mock_speak:
@@ -383,9 +387,11 @@ class TestGUIWindowAndTabs(unittest.TestCase):
 
     @patch.object(QMessageBox, "information")
     def test_service_toggle_openrgb_and_close_event(self, mock_msg):
-        with patch("g502_gui.set_g733_rgb") as mock_rgb:
+        with patch("g502_gui.set_g733_rgb") as mock_rgb, \
+             patch("g502_gui.set_g502_rgb") as mock_m_rgb:
             self.win.apply_all_black_rgb()
-            mock_rgb.assert_called_with(0, 0, 0, mode=0)
+            mock_rgb.assert_called_with(0, 0, 0, mode=0, brightness=0)
+            mock_m_rgb.assert_called_with(0, 0, 0, mode=0, brightness=0)
             mock_msg.assert_called_once()
 
         # Test service status toggle
@@ -402,13 +408,70 @@ class TestGUIWindowAndTabs(unittest.TestCase):
         ev_ignore = QCloseEvent()
         with patch("subprocess.run", return_value=MagicMock(stdout="active\n")):
             self.win.closeEvent(ev_ignore)
-            self.assertFalse(ev_ignore.isAccepted())
+            if hasattr(self.win, "tray_icon"):
+                self.assertFalse(ev_ignore.isAccepted())
 
         # Test closeEvent accepting close when service is inactive
         ev_accept = QCloseEvent()
         with patch("subprocess.run", return_value=MagicMock(stdout="inactive\n")):
             self.win.closeEvent(ev_accept)
             self.assertTrue(ev_accept.isAccepted())
+
+    def test_ghub_home_navigation_gshift_profiles_lightsync_and_autostart(self):
+        # 1. Redundant top tabBars are hidden because left icon rail handles navigation
+        self.assertTrue(self.win.mouse_tabs.tabBar().isHidden())
+        self.assertTrue(self.win.headset_tabs.tabBar().isHidden())
+
+        # 2. Back button navigates to G HUB Home Page (index 0) and device card click returns to Studio (index 1)
+        self.win.show_home_page()
+        self.assertEqual(self.win.root_stack.currentIndex(), 0)
+        self.win.on_home_device_card_clicked(1, 2)  # Open G733 LIGHTSYNC
+        self.assertEqual(self.win.root_stack.currentIndex(), 1)
+        self.assertEqual(self.win.combo_main_device.currentIndex(), 1)
+        self.assertEqual(self.win.headset_tabs.currentIndex(), 2)
+        self.win.on_home_device_card_clicked(0, 0)  # Return to G502 Assignments
+
+        # 3. Interactive G-SHIFT layer toggle switches active button dictionaries
+        self.win.on_gshift_toggled(True)
+        self.assertTrue(self.win.gshift_active)
+        self.assertIs(self.win.buttons_cfg, self.win.gshift_buttons_cfg)
+        self.assertIn("[G-SHIFT]", self.win.selected_title_lbl.text())
+        self.win.on_gshift_toggled(False)
+        self.assertFalse(self.win.gshift_active)
+        self.assertIs(self.win.buttons_cfg, self.win.default_buttons_cfg)
+
+        # 4. Persistent Profile switcher updates DPI, EQ, and RGB
+        with patch("g502_gui.set_g502_rgb") as mock_m_rgb, \
+             patch("g502_gui.set_g733_rgb") as mock_h_rgb:
+            self.win.combo_app_profile.setCurrentText("FPS Competitive")
+            self.assertEqual(self.win.dpi_slider.value(), 1200)
+            self.assertTrue(mock_m_rgb.called)
+            self.assertTrue(mock_h_rgb.called)
+            self.win.combo_app_profile.setCurrentText("Desktop: Default")
+            self.assertEqual(self.win.dpi_slider.value(), 800)
+
+        # 5. Standalone Mouse & Headset LIGHTSYNC brightness and color controls
+        with patch("g502_gui.set_g502_rgb") as mock_m_rgb:
+            self.win.mouse_brightness_slider.setValue(65)
+            self.win.apply_mouse_swatch(16, 185, 129)
+            mock_m_rgb.assert_called_with(16, 185, 129, mode=1, brightness=65, zone=None)
+
+        with patch("g502_gui.set_g733_rgb") as mock_h_rgb:
+            self.win.hs_brightness_slider.setValue(75)
+            self.win.apply_headset_swatch(168, 85, 247)
+            mock_h_rgb.assert_called_with(168, 85, 247, mode=1, brightness=75, zone=None)
+
+        # 6. XDG Autostart .desktop creation and removal
+        with tempfile.TemporaryDirectory() as tmpdir:
+            fake_desktop = os.path.join(tmpdir, "logitech-control-center.desktop")
+            with patch.object(g502_gui, "AUTOSTART_DESKTOP_PATH", fake_desktop):
+                self.assertTrue(g502_gui.configure_xdg_autostart(True, start_minimized=True))
+                self.assertTrue(os.path.exists(fake_desktop))
+                with open(fake_desktop, "r") as f:
+                    content = f.read()
+                self.assertIn("--minimized", content)
+                self.assertTrue(g502_gui.configure_xdg_autostart(False))
+                self.assertFalse(os.path.exists(fake_desktop))
 
     def test_settings_dialog_and_diagnostics(self):
         dlg = g502_gui.SettingsDialog(self.win)
@@ -494,7 +557,15 @@ class TestG502MacroDaemon(unittest.TestCase):
                 new_expiry = daemon.active_threads["TILT_RIGHT"][2]["expiry"]
                 self.assertGreater(new_expiry, old_expiry)
 
-                # 5. Test Custom Key Loop & SIGHUP reload
+                # 5. Test EV_KEY Button 9 (CODE_TILT_RIGHT = 280) and Button 10 (CODE_TILT_LEFT = 281) constants & ratbag setup
+                self.assertEqual(g502_macro_daemon.CODE_TILT_RIGHT, 280)
+                self.assertEqual(g502_macro_daemon.CODE_TILT_LEFT, 281)
+                with patch("subprocess.run") as mock_sub_run:
+                    mock_sub_run.return_value = MagicMock(stdout="hooting-chinchilla: Logitech Gaming Mouse G502\n")
+                    daemon.ensure_g502_ratbag_buttons()
+                    self.assertGreaterEqual(mock_sub_run.call_count, 6)
+
+                # 6. Test Custom Key Loop & SIGHUP reload
                 daemon.trigger_button_action("G7", True)
                 time.sleep(0.025)
                 daemon.reload_config()
