@@ -46,168 +46,170 @@ DIAGRAM_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'g502_di
 ICON_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'icon.png')
 GITHUB_URL = "https://github.com/gaxkalik/Logitech-Linux-App"
 
+from ghub_canvas import write_ghub_svgs, HardwareStageWidget
+
 THEMES = {
     "Dark Void (Default)": {
-        "bg_main": "#0B0D13",
-        "bg_card": "#131722",
-        "bg_input": "#1C2230",
-        "accent": "#38BDF8",
-        "text_main": "#F1F5F9",
-        "text_sub": "#94A3B8",
-        "border": "#262F40"
+        "bg_main": "#000000",
+        "bg_card": "#18181B",
+        "bg_input": "#222226",
+        "accent": "#00A8FC",
+        "text_main": "#F4F4F5",
+        "text_sub": "#8E8E93",
+        "border": "#2E2E32"
     },
     "Midnight Cyan": {
-        "bg_main": "#0A192F",
-        "bg_card": "#112240",
-        "bg_input": "#1D3557",
-        "accent": "#64FFDA",
-        "text_main": "#CCD6F6",
-        "text_sub": "#8892B0",
-        "border": "#233554"
+        "bg_main": "#05070A",
+        "bg_card": "#12161F",
+        "bg_input": "#1C222E",
+        "accent": "#00B8D9",
+        "text_main": "#F1F5F9",
+        "text_sub": "#94A3B8",
+        "border": "#283142"
     },
     "Cyberpunk Neon": {
-        "bg_main": "#0D0221",
-        "bg_card": "#190535",
-        "bg_input": "#2C0B4D",
-        "accent": "#FF007F",
-        "text_main": "#F1E3F8",
-        "text_sub": "#B593C3",
-        "border": "#3A105C"
-    },
-    "Slate Dark": {
-        "bg_main": "#0F172A",
-        "bg_card": "#1E293B",
-        "bg_input": "#334155",
-        "accent": "#38BDF8",
-        "text_main": "#F8FAFC",
-        "text_sub": "#94A3B8",
-        "border": "#334155"
-    },
-    "Nordic Frost": {
-        "bg_main": "#2E3440",
-        "bg_card": "#3B4252",
-        "bg_input": "#4C566A",
-        "accent": "#88C0D0",
-        "text_main": "#ECEFF4",
-        "text_sub": "#D8DEE9",
-        "border": "#434C5E"
-    },
-    "Dracula Dark": {
-        "bg_main": "#282A36",
-        "bg_card": "#343746",
-        "bg_input": "#44475A",
-        "accent": "#FF79C6",
-        "text_main": "#F8F8F2",
-        "text_sub": "#BD93F9",
-        "border": "#6272A4"
-    },
-    "Emerald Forest": {
-        "bg_main": "#061412",
-        "bg_card": "#0C2320",
-        "bg_input": "#143833",
-        "accent": "#34D399",
-        "text_main": "#ECFDF5",
-        "text_sub": "#6EE7B7",
-        "border": "#164E63"
-    },
-    "Sunset Crimson": {
-        "bg_main": "#180A0A",
-        "bg_card": "#2A1212",
-        "bg_input": "#3F1B1B",
-        "accent": "#FB7185",
-        "text_main": "#FFF1F2",
-        "text_sub": "#FDA4AF",
-        "border": "#881337"
-    },
-    "Tokyo Night": {
-        "bg_main": "#1A1B26",
-        "bg_card": "#24283B",
-        "bg_input": "#414868",
-        "accent": "#7AA2F7",
-        "text_main": "#A9B1D6",
-        "text_sub": "#7DCFFF",
-        "border": "#565F89"
-    },
-    "Solar Gold": {
-        "bg_main": "#121212",
-        "bg_card": "#1E1E1E",
-        "bg_input": "#2C2C2C",
-        "accent": "#FBBF24",
-        "text_main": "#FEF3C7",
-        "text_sub": "#FCD34D",
-        "border": "#383838"
-    },
-    "Synthwave 80s": {
-        "bg_main": "#120A2A",
-        "bg_card": "#1B103C",
-        "bg_input": "#2D1B5E",
-        "accent": "#FF71CE",
-        "text_main": "#FDFEFE",
-        "text_sub": "#01CDFE",
-        "border": "#432888"
-    },
-    "Matrix Hacker": {
-        "bg_main": "#0D1117",
-        "bg_card": "#161B22",
-        "bg_input": "#21262D",
-        "accent": "#00FF66",
-        "text_main": "#E6EDF3",
-        "text_sub": "#7EE787",
-        "border": "#30363D"
-    },
-    "Deep Amethyst": {
-        "bg_main": "#150C22",
-        "bg_card": "#221435",
-        "bg_input": "#321E4B",
-        "accent": "#C084FC",
-        "text_main": "#F3E8FF",
-        "text_sub": "#A855F7",
-        "border": "#4C2875"
-    },
-    "Oceanic Abyss": {
-        "bg_main": "#050E18",
-        "bg_card": "#0B192C",
-        "bg_input": "#1E3A8A",
-        "accent": "#00F5D4",
-        "text_main": "#E0F2FE",
-        "text_sub": "#38BDF8",
-        "border": "#1E293B"
-    },
-    "Rose Gold Luxe": {
-        "bg_main": "#18181B",
-        "bg_card": "#27272A",
-        "bg_input": "#3F3F46",
-        "accent": "#FB7185",
-        "text_main": "#FAFAFA",
-        "text_sub": "#F472B6",
-        "border": "#52525B"
-    },
-    "Vaporwave Pastel": {
-        "bg_main": "#1E1B2E",
-        "bg_card": "#28243D",
-        "bg_input": "#3A3556",
-        "accent": "#F472B6",
-        "text_main": "#F3E8FF",
-        "text_sub": "#A78BFA",
-        "border": "#4C456B"
-    },
-    "Monochrome Stealth": {
-        "bg_main": "#121212",
-        "bg_card": "#1E1E1E",
-        "bg_input": "#2A2A2A",
-        "accent": "#FFFFFF",
+        "bg_main": "#09090B",
+        "bg_card": "#18181B",
+        "bg_input": "#27272A",
+        "accent": "#F59E0B",
         "text_main": "#FAFAFA",
         "text_sub": "#A1A1AA",
+        "border": "#3F3F46"
+    },
+    "Slate Dark": {
+        "bg_main": "#090B0E",
+        "bg_card": "#14181F",
+        "bg_input": "#1F242D",
+        "accent": "#3B82F6",
+        "text_main": "#F3F4F6",
+        "text_sub": "#9CA3AF",
+        "border": "#2D3542"
+    },
+    "Nordic Frost": {
+        "bg_main": "#181C22",
+        "bg_card": "#232831",
+        "bg_input": "#2E3440",
+        "accent": "#88C0D0",
+        "text_main": "#ECEFF4",
+        "text_sub": "#9EA9B8",
+        "border": "#3B4252"
+    },
+    "Dracula Dark": {
+        "bg_main": "#111217",
+        "bg_card": "#1C1E26",
+        "bg_input": "#282A36",
+        "accent": "#8B5CF6",
+        "text_main": "#F8F8F2",
+        "text_sub": "#9499B3",
+        "border": "#343746"
+    },
+    "Emerald Forest": {
+        "bg_main": "#050B09",
+        "bg_card": "#101C18",
+        "bg_input": "#182923",
+        "accent": "#10B981",
+        "text_main": "#ECFDF5",
+        "text_sub": "#86A89D",
+        "border": "#233B33"
+    },
+    "Sunset Crimson": {
+        "bg_main": "#0C0707",
+        "bg_card": "#1A1111",
+        "bg_input": "#261919",
+        "accent": "#E11D48",
+        "text_main": "#F5F5F5",
+        "text_sub": "#A38F8F",
+        "border": "#382424"
+    },
+    "Tokyo Night": {
+        "bg_main": "#0D0E14",
+        "bg_card": "#161822",
+        "bg_input": "#212433",
+        "accent": "#60A5FA",
+        "text_main": "#E2E8F0",
+        "text_sub": "#8B95B0",
+        "border": "#2E3348"
+    },
+    "Solar Gold": {
+        "bg_main": "#0A0A0A",
+        "bg_card": "#171717",
+        "bg_input": "#242424",
+        "accent": "#D97706",
+        "text_main": "#F5F5F4",
+        "text_sub": "#A8A29E",
         "border": "#333333"
     },
+    "Synthwave 80s": {
+        "bg_main": "#09090D",
+        "bg_card": "#15151E",
+        "bg_input": "#222230",
+        "accent": "#06B6D4",
+        "text_main": "#F4F4F6",
+        "text_sub": "#9494A6",
+        "border": "#2E2E40"
+    },
+    "Matrix Hacker": {
+        "bg_main": "#060807",
+        "bg_card": "#111613",
+        "bg_input": "#1A221D",
+        "accent": "#22C55E",
+        "text_main": "#E6EDF3",
+        "text_sub": "#7D9184",
+        "border": "#26332B"
+    },
+    "Deep Amethyst": {
+        "bg_main": "#0B0910",
+        "bg_card": "#171320",
+        "bg_input": "#231D30",
+        "accent": "#9333EA",
+        "text_main": "#F3E8FF",
+        "text_sub": "#9C8FAD",
+        "border": "#322945"
+    },
+    "Oceanic Abyss": {
+        "bg_main": "#04080E",
+        "bg_card": "#0D1520",
+        "bg_input": "#162233",
+        "accent": "#0EA5E9",
+        "text_main": "#E0F2FE",
+        "text_sub": "#8298B0",
+        "border": "#21324A"
+    },
+    "Rose Gold Luxe": {
+        "bg_main": "#0C0C0E",
+        "bg_card": "#18181B",
+        "bg_input": "#27272A",
+        "accent": "#F43F5E",
+        "text_main": "#FAFAFA",
+        "text_sub": "#A1A1AA",
+        "border": "#3F3F46"
+    },
+    "Vaporwave Pastel": {
+        "bg_main": "#101016",
+        "bg_card": "#1B1B24",
+        "bg_input": "#272733",
+        "accent": "#818CF8",
+        "text_main": "#F4F4F6",
+        "text_sub": "#9B9BB0",
+        "border": "#363647"
+    },
+    "Monochrome Stealth": {
+        "bg_main": "#000000",
+        "bg_card": "#141414",
+        "bg_input": "#222222",
+        "accent": "#FFFFFF",
+        "text_main": "#FAFAFA",
+        "text_sub": "#8E8E93",
+        "border": "#2E2E2E"
+    },
     "Light Pristine": {
-        "bg_main": "#F1F5F9",
+        "bg_main": "#F4F4F5",
         "bg_card": "#FFFFFF",
-        "bg_input": "#E2E8F0",
+        "bg_input": "#E4E4E7",
         "accent": "#0284C7",
-        "text_main": "#0F172A",
-        "text_sub": "#475569",
-        "border": "#CBD5E1"
+        "text_main": "#09090B",
+        "text_sub": "#52525B",
+        "border": "#D4D4D8"
     }
 }
 
@@ -229,51 +231,27 @@ def is_light_theme(theme_name):
 
 
 def apply_card_elevation(widget, theme_name="Dark Void (Default)"):
-    """Applies subtle elevation shadow to cards while preserving structural borders."""
-    shadow = QGraphicsDropShadowEffect(widget)
-    if is_light_theme(theme_name):
-        shadow.setColor(QColor(15, 23, 42, 22))
-        shadow.setBlurRadius(24)
-        shadow.setOffset(0, 4)
-    else:
-        shadow.setColor(QColor(0, 0, 0, 85))
-        shadow.setBlurRadius(22)
-        shadow.setOffset(0, 5)
-    widget.setGraphicsEffect(shadow)
+    """No ambient radial glows; uses crisp high-contrast structural planes per strict G HUB spec."""
+    widget.setGraphicsEffect(None)
 
 
 def generate_qss(theme_name="Dark Void (Default)"):
     t = THEMES.get(theme_name, THEMES["Dark Void (Default)"])
     light = is_light_theme(theme_name)
-    accent_hover = adjust_hex_color(t['accent'], 0.90 if light else 1.14)
-    accent_pressed = adjust_hex_color(t['accent'], 0.80 if light else 0.86)
-    input_hover = adjust_hex_color(t['bg_input'], 0.95 if light else 1.18)
+    accent_hover = adjust_hex_color(t['accent'], 0.90 if light else 1.12)
+    accent_pressed = adjust_hex_color(t['accent'], 0.82 if light else 0.86)
+    input_hover = adjust_hex_color(t['bg_input'], 0.94 if light else 1.16)
     input_pressed = adjust_hex_color(t['bg_input'], 0.88 if light else 0.88)
 
     # Pure black/white 10% alpha outline for content images per better-ui
     img_outline = "rgba(0, 0, 0, 0.10)" if light else "rgba(255, 255, 255, 0.10)"
 
-    # Generate crisp vector SVGs matching text weight (1.75px - 2.0px stroke)
-    os.makedirs(ICONS_CACHE_DIR, exist_ok=True)
-    chevron_down_path = os.path.join(ICONS_CACHE_DIR, 'chevron_down.svg')
-    chevron_up_path = os.path.join(ICONS_CACHE_DIR, 'chevron_up.svg')
-    check_path = os.path.join(ICONS_CACHE_DIR, 'check.svg')
-
-    with open(chevron_down_path, 'w') as f:
-        f.write(
-            f'<svg width="12" height="8" viewBox="0 0 12 8" fill="none" xmlns="http://www.w3.org/2000/svg">'
-            f'<path d="M1.5 1.75L6 6.25L10.5 1.75" stroke="{t["accent"]}" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round"/></svg>'
-        )
-    with open(chevron_up_path, 'w') as f:
-        f.write(
-            f'<svg width="12" height="8" viewBox="0 0 12 8" fill="none" xmlns="http://www.w3.org/2000/svg">'
-            f'<path d="M1.5 6.25L6 1.75L10.5 6.25" stroke="{t["accent"]}" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round"/></svg>'
-        )
-    with open(check_path, 'w') as f:
-        f.write(
-            f'<svg width="12" height="10" viewBox="0 0 12 10" fill="none" xmlns="http://www.w3.org/2000/svg">'
-            f'<path d="M1.5 5.25L4.5 8.25L10.5 1.75" stroke="{t["bg_main"]}" stroke-width="2.0" stroke-linecap="round" stroke-linejoin="round"/></svg>'
-        )
+    svg_paths = write_ghub_svgs(
+        ICONS_CACHE_DIR, t["accent"], t["text_main"], t["text_sub"], t["bg_main"]
+    )
+    chevron_down_path = svg_paths["chevron_down.svg"]
+    chevron_up_path = svg_paths["chevron_up.svg"]
+    check_path = svg_paths["check.svg"]
 
     return f"""
 QMainWindow, QDialog {{
@@ -295,31 +273,41 @@ QLabel {{
 
 QLabel#headerTitle {{
     color: {t['text_main']};
-    font-size: 16px;
+    font-size: 12px;
     font-weight: 700;
+    letter-spacing: 0.8px;
     border: none;
     background: transparent;
 }}
 
 QLabel#headerSubtitle {{
-    color: {t['text_sub']};
-    font-size: 11px;
-    font-weight: 500;
+    color: {t['accent']};
+    font-size: 12px;
+    font-weight: 600;
     border: none;
     background: transparent;
 }}
 
-QLabel#sectionHeader {{
-    color: {t['accent']};
-    font-size: 11px;
+QLabel#drawerTitle {{
+    color: {t['text_main']};
+    font-size: 20px;
     font-weight: 700;
-    letter-spacing: 0.5px;
+    letter-spacing: -0.2px;
+    padding-bottom: 4px;
+}}
+
+QLabel#sectionHeader {{
+    color: {t['text_sub']};
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1.0px;
     border: none;
     background: transparent;
 }}
 
 QLabel#accentTitle {{
-    color: {t['accent']};
+    color: {t['text_main']};
+    font-size: 12px;
     font-weight: 700;
     border: none;
     background: transparent;
@@ -327,102 +315,127 @@ QLabel#accentTitle {{
 
 QLabel#valueBadge {{
     background-color: {t['bg_input']};
-    color: {t['accent']};
+    color: {t['text_main']};
     border: 1px solid {t['border']};
-    border-radius: 6px;
+    border-radius: 4px;
     padding: 2px 8px;
     font-family: 'JetBrains Mono', 'Consolas', monospace;
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 700;
 }}
 
 QLabel#subText {{
     color: {t['text_sub']};
-    font-size: 12px;
+    font-size: 11px;
     border: none;
     background: transparent;
 }}
 
 QLabel#diagramImage {{
-    background-color: #1A222D;
+    background-color: #000000;
     border: 1px solid {img_outline};
-    border-radius: 8px;
-    padding: 6px;
+    border-radius: 4px;
+    padding: 4px;
 }}
 
-/* Concentric Radii: Header Bar outer radius 18px = inner controls 8px + 10px padding */
+/* Top Bar: Flat G HUB dark bar with 1px bottom structural divider */
 .QFrame#headerBar {{
+    background-color: {t['bg_main']};
+    border: none;
+    border-bottom: 1px solid {t['border']};
+    border-radius: 0px;
+}}
+
+/* Left Vertical 48px Icon Rail */
+.QFrame#leftRail {{
     background-color: {t['bg_card']};
-    border: 1px solid {t['border']};
-    border-radius: 18px;
+    border: none;
+    border-right: 1px solid {t['border']};
+    border-radius: 0px;
+}}
+
+/* Left Inspector Panel (380px opaque matte drawer) */
+.QFrame#inspectorDrawer {{
+    background-color: {t['bg_card']};
+    border: none;
+    border-right: 1px solid {t['border']};
+    border-radius: 0px;
+}}
+
+/* 1px Structural Horizontal Divider */
+.QFrame#dividerLine {{
+    background-color: {t['border']};
+    border: none;
+    max-height: 1px;
+    min-height: 1px;
 }}
 
 .QFrame#summaryBox {{
     background-color: {t['bg_main']};
     border: 1px solid {t['border']};
-    border-radius: 8px;
-    padding: 10px 12px;
+    border-radius: 4px;
+    padding: 8px 10px;
 }}
 
 .QFrame#guideBox {{
-    background-color: {t['bg_card']};
+    background-color: {t['bg_main']};
     border: 1px solid {t['border']};
-    border-radius: 14px;
-    padding: 10px 14px;
+    border-radius: 4px;
+    padding: 8px 12px;
 }}
 
-/* Detached modern pill TabBar with unboxed pane to eliminate corner overlaps */
+/* G HUB Underline Sub-Tabs */
 QTabWidget::pane {{
     border: none;
     background: transparent;
-    margin-top: 8px;
+    margin-top: 6px;
 }}
 
 QTabBar::tab {{
-    background-color: {t['bg_card']};
+    background-color: transparent;
     color: {t['text_sub']};
-    /* Optical alignment: 2px less padding on leading icon side (14px left vs 16px right) */
-    padding: 9px 16px 9px 14px;
-    font-weight: 600;
-    font-size: 13px;
-    border: 1px solid {t['border']};
-    border-radius: 8px;
-    margin-right: 6px;
+    padding: 6px 10px 6px 0px;
+    margin-right: 14px;
+    font-weight: 700;
+    font-size: 11px;
+    letter-spacing: 0.6px;
+    border: none;
+    border-bottom: 2px solid transparent;
+    border-radius: 0px;
 }}
 
 QTabBar::tab:hover:!selected {{
     color: {t['text_main']};
-    background-color: {t['bg_input']};
-    border-color: {t['accent']};
 }}
 
 QTabBar::tab:selected {{
-    background-color: {t['accent']};
-    color: {t['bg_main']};
-    border: 1px solid {t['accent']};
+    color: {t['text_main']};
+    border-bottom: 2px solid {t['text_main']};
     font-weight: 700;
 }}
 
+/* Unboxed structural sections inside drawer */
 QGroupBox {{
     font-weight: 700;
-    font-size: 13px;
-    border: 1px solid {t['border']};
-    border-radius: 14px;
-    margin-top: 0px;
-    padding-top: 34px;
-    padding-bottom: 12px;
-    padding-left: 12px;
-    padding-right: 12px;
-    background-color: {t['bg_card']};
+    font-size: 10px;
+    border: none;
+    border-top: 1px solid {t['border']};
+    border-radius: 0px;
+    margin-top: 6px;
+    padding-top: 22px;
+    padding-bottom: 6px;
+    padding-left: 0px;
+    padding-right: 0px;
+    background-color: transparent;
 }}
 
 QGroupBox::title {{
     subcontrol-origin: padding;
     subcontrol-position: top left;
-    left: 14px;
-    top: 10px;
+    left: 0px;
+    top: 6px;
     padding: 0px;
-    color: {t['accent']};
+    color: {t['text_sub']};
     background-color: transparent;
 }}
 
@@ -430,23 +443,20 @@ QPushButton {{
     background-color: {t['bg_input']};
     color: {t['text_main']};
     border: 1px solid {t['border']};
-    border-radius: 8px;
-    /* Optical alignment: 14px left, 16px right */
-    padding: 8px 16px 8px 14px;
+    border-radius: 4px;
+    padding: 7px 14px 7px 12px;
     font-weight: 600;
-    font-size: 13px;
+    font-size: 12px;
 }}
 
 QPushButton:!disabled:hover {{
     background-color: {input_hover};
     border-color: {t['accent']};
-    color: {t['accent']};
+    color: {t['text_main']};
 }}
 
 QPushButton:!disabled:pressed {{
     background-color: {input_pressed};
-    padding-top: 9px;
-    padding-bottom: 7px;
 }}
 
 QPushButton:disabled {{
@@ -457,105 +467,120 @@ QPushButton:disabled {{
 
 QPushButton#btnIcon {{
     padding: 0px;
-    font-size: 16px;
-    border-radius: 8px;
-    background-color: {t['bg_input']};
-    border: 1px solid {t['border']};
+    font-size: 13px;
+    border-radius: 4px;
+    background-color: transparent;
+    border: 1px solid transparent;
 }}
 
 QPushButton#btnIcon:!disabled:hover {{
-    background-color: {input_hover};
-    border-color: {t['accent']};
-    color: {t['accent']};
+    background-color: {t['bg_input']};
+    border-color: {t['border']};
 }}
 
+/* Left Vertical Rail 48x48 Square Icon Buttons */
+QPushButton#railBtn {{
+    background-color: transparent;
+    border: none;
+    border-bottom: 1px solid {t['border']};
+    border-radius: 0px;
+    padding: 0px;
+}}
+
+QPushButton#railBtn:!disabled:hover:!checked {{
+    background-color: {t['bg_input']};
+}}
+
+QPushButton#railBtn:checked {{
+    background-color: {t['accent']};
+    border: none;
+}}
+
+/* Editorial Divider List Rows (Assignments list in G HUB) */
 QPushButton#btnSelector {{
-    background-color: {t['bg_main']};
-    color: {t['text_main']};
-    border: 1px solid {t['border']};
-    border-radius: 8px;
-    padding: 9px 14px 9px 12px;
-    font-size: 13px;
+    background-color: transparent;
+    color: {t['text_sub']};
+    border: none;
+    border-bottom: 1px solid {t['border']};
+    border-radius: 0px;
+    padding: 10px 8px;
+    font-size: 12px;
     font-weight: 500;
     text-align: left;
 }}
 
 QPushButton#btnSelector:!disabled:hover {{
     background-color: {t['bg_input']};
-    color: {t['accent']};
-    border-color: {t['accent']};
+    color: {t['text_main']};
 }}
 
 QPushButton#btnSelector:checked {{
-    background-color: {t['accent']};
-    color: {t['bg_main']};
-    border: 1px solid {t['accent']};
+    background-color: {t['bg_input']};
+    color: {t['text_main']};
+    border-left: 3px solid {t['accent']};
+    border-bottom: 1px solid {t['border']};
+    padding-left: 9px;
     font-weight: 700;
 }}
 
 QPushButton#accentBtn {{
     background-color: {t['accent']};
-    color: {t['bg_main']};
+    color: #000000;
     border: 1px solid {t['accent']};
-    border-radius: 8px;
-    padding: 8px 16px 8px 14px;
+    border-radius: 4px;
+    padding: 7px 14px 7px 12px;
     font-weight: 700;
+    font-size: 11px;
+    letter-spacing: 0.4px;
 }}
 
 QPushButton#accentBtn:!disabled:hover {{
     background-color: {accent_hover};
     border-color: {accent_hover};
-    color: {t['bg_main']};
+    color: #000000;
 }}
 
 QPushButton#accentBtn:!disabled:pressed {{
     background-color: {accent_pressed};
     border-color: {accent_pressed};
-    padding-top: 9px;
-    padding-bottom: 7px;
 }}
 
 QPushButton#stopBtn {{
-    background-color: #DC2626;
-    color: #FFFFFF;
-    border: 1px solid #EF4444;
-    border-radius: 8px;
-    padding: 8px 16px 8px 14px;
+    background-color: #27272A;
+    color: #F87171;
+    border: 1px solid #52525B;
+    border-radius: 4px;
+    padding: 7px 14px 7px 12px;
     font-weight: 700;
+    font-size: 11px;
 }}
 
 QPushButton#stopBtn:!disabled:hover {{
-    background-color: #EF4444;
+    background-color: #3F3F46;
     border-color: #F87171;
-    color: #FFFFFF;
-}}
-
-QPushButton#stopBtn:!disabled:pressed {{
-    background-color: #B91C1C;
-    padding-top: 9px;
-    padding-bottom: 7px;
+    color: #FCA5A5;
 }}
 
 /* Horizontal & Vertical Sliders */
 QSlider::groove:horizontal {{
     border: none;
-    height: 6px;
+    height: 4px;
     background: {t['bg_input']};
-    border-radius: 3px;
+    border-radius: 2px;
 }}
 
 QSlider::sub-page:horizontal {{
     background: {t['accent']};
-    border-radius: 3px;
+    border-radius: 2px;
 }}
 
 QSlider::handle:horizontal {{
-    background: {t['bg_card']};
+    background: {t['text_main']};
     border: 2px solid {t['accent']};
-    width: 16px;
-    height: 16px;
-    margin: -6px 0;
-    border-radius: 9px;
+    width: 12px;
+    height: 12px;
+    margin: -5px 0;
+    border-radius: 7px;
 }}
 
 QSlider::handle:horizontal:hover {{
@@ -564,43 +589,43 @@ QSlider::handle:horizontal:hover {{
 
 QSlider::groove:vertical {{
     border: none;
-    width: 6px;
+    width: 4px;
     background: {t['bg_input']};
-    border-radius: 3px;
+    border-radius: 2px;
 }}
 
 QSlider::add-page:vertical {{
     background: {t['accent']};
-    border-radius: 3px;
+    border-radius: 2px;
 }}
 
 QSlider::sub-page:vertical {{
     background: {t['bg_input']};
-    border-radius: 3px;
+    border-radius: 2px;
 }}
 
 QSlider::handle:vertical {{
-    background: {t['bg_card']};
+    background: {t['text_main']};
     border: 2px solid {t['accent']};
-    width: 16px;
-    height: 16px;
-    margin: 0 -6px;
-    border-radius: 9px;
+    width: 12px;
+    height: 12px;
+    margin: 0 -5px;
+    border-radius: 7px;
 }}
 
 QSlider::handle:vertical:hover {{
     background: {t['accent']};
 }}
 
-/* Form Inputs: 3:1 contrast boundary + custom SVG indicators */
+/* Form Inputs: 4px functional radius + custom SVG indicators */
 QComboBox {{
     background-color: {t['bg_input']};
     border: 1px solid {t['border']};
-    border-radius: 8px;
-    padding: 7px 34px 7px 12px;
+    border-radius: 4px;
+    padding: 6px 30px 6px 10px;
     color: {t['text_main']};
-    font-size: 13px;
-    font-weight: 500;
+    font-size: 12px;
+    font-weight: 600;
 }}
 
 QComboBox:hover {{
@@ -610,41 +635,36 @@ QComboBox:hover {{
 QComboBox::drop-down {{
     subcontrol-origin: padding;
     subcontrol-position: top right;
-    width: 28px;
-    border-left: 1px solid {t['border']};
-    border-top-right-radius: 8px;
-    border-bottom-right-radius: 8px;
+    width: 24px;
+    border-left: none;
     background: transparent;
 }}
 
 QComboBox::down-arrow {{
     image: url({chevron_down_path});
-    width: 12px;
-    height: 8px;
-}}
-
-QComboBox::down-arrow:on {{
-    margin-top: 2px;
+    width: 10px;
+    height: 6px;
 }}
 
 QComboBox QAbstractItemView {{
     background-color: {t['bg_card']};
     color: {t['text_main']};
     selection-background-color: {t['accent']};
-    selection-color: {t['bg_main']};
+    selection-color: #000000;
     border: 1px solid {t['border']};
-    border-radius: 8px;
-    padding: 4px;
+    border-radius: 4px;
+    padding: 2px;
     outline: none;
 }}
 
 QSpinBox, QDoubleSpinBox {{
     background-color: {t['bg_input']};
     border: 1px solid {t['border']};
-    border-radius: 8px;
-    padding: 7px 32px 7px 12px;
+    border-radius: 4px;
+    padding: 6px 28px 6px 10px;
     color: {t['text_main']};
-    font-size: 13px;
+    font-family: 'JetBrains Mono', 'Consolas', monospace;
+    font-size: 12px;
     font-weight: 600;
 }}
 
@@ -655,19 +675,19 @@ QSpinBox:hover, QDoubleSpinBox:hover {{
 QSpinBox::up-button, QDoubleSpinBox::up-button {{
     subcontrol-origin: border;
     subcontrol-position: top right;
-    width: 26px;
+    width: 22px;
     border-left: 1px solid {t['border']};
     border-bottom: 1px solid {t['border']};
-    border-top-right-radius: 8px;
+    border-top-right-radius: 4px;
     background: transparent;
 }}
 
 QSpinBox::down-button, QDoubleSpinBox::down-button {{
     subcontrol-origin: border;
     subcontrol-position: bottom right;
-    width: 26px;
+    width: 22px;
     border-left: 1px solid {t['border']};
-    border-bottom-right-radius: 8px;
+    border-bottom-right-radius: 4px;
     background: transparent;
 }}
 
@@ -689,15 +709,15 @@ QSpinBox::down-arrow, QDoubleSpinBox::down-arrow {{
 }}
 
 QCheckBox {{
-    spacing: 10px;
-    font-size: 13px;
+    spacing: 8px;
+    font-size: 12px;
     color: {t['text_main']};
 }}
 
 QCheckBox::indicator {{
-    width: 18px;
-    height: 18px;
-    border-radius: 5px;
+    width: 16px;
+    height: 16px;
+    border-radius: 3px;
     border: 1px solid {t['border']};
     background-color: {t['bg_input']};
 }}
@@ -712,88 +732,92 @@ QCheckBox::indicator:checked {{
     image: url({check_path});
 }}
 
-/* Concentric Menu: outer 12px = inner 6px + 6px padding */
+/* Concentric Menu: outer 6px = inner 4px + 2px padding */
 QMenu {{
     background-color: {t['bg_card']};
     color: {t['text_main']};
     border: 1px solid {t['border']};
-    border-radius: 12px;
-    padding: 6px;
+    border-radius: 6px;
+    padding: 2px;
 }}
 
 QMenu::item {{
-    padding: 8px 18px 8px 14px;
-    border-radius: 6px;
-    font-size: 13px;
+    padding: 7px 16px 7px 12px;
+    border-radius: 4px;
+    font-size: 12px;
     font-weight: 500;
 }}
 
 QMenu::item:selected {{
     background-color: {t['accent']};
-    color: {t['bg_main']};
+    color: #000000;
     font-weight: 700;
 }}
 
 QMenu::separator {{
     height: 1px;
     background: {t['border']};
-    margin: 5px 8px;
+    margin: 4px 6px;
 }}
 
 QTextEdit {{
     background-color: {t['bg_main']};
     border: 1px solid {t['border']};
-    border-radius: 8px;
+    border-radius: 4px;
     padding: 8px;
     color: {t['text_main']};
     font-family: 'JetBrains Mono', 'Consolas', 'Monaco', monospace;
-    font-size: 12px;
+    font-size: 11px;
 }}
 
 QProgressBar {{
     background-color: {t['bg_input']};
     border: 1px solid {t['border']};
-    border-radius: 8px;
-    height: 18px;
+    border-radius: 3px;
+    height: 10px;
     text-align: center;
     color: {t['text_main']};
+    font-family: 'JetBrains Mono', monospace;
     font-weight: 700;
-    font-size: 11px;
+    font-size: 10px;
 }}
 
 QProgressBar::chunk {{
     background-color: {t['accent']};
-    border-radius: 7px;
+    border-radius: 2px;
 }}
 
 QLabel#statusBadgeActive {{
-    background-color: #064E3B;
-    color: #34D399;
-    border: 1px solid #059669;
-    border-radius: 8px;
-    padding: 0px 12px;
+    background-color: {t['bg_input']};
+    color: #10B981;
+    border: 1px solid {t['border']};
+    border-radius: 4px;
+    padding: 0px 10px;
+    font-family: 'JetBrains Mono', monospace;
     font-weight: 700;
-    font-size: 12px;
+    font-size: 11px;
 }}
 
 QLabel#statusBadgeInactive {{
-    background-color: #451A03;
-    color: #FDBA74;
-    border: 1px solid #D97706;
-    border-radius: 8px;
-    padding: 0px 12px;
+    background-color: {t['bg_input']};
+    color: #F59E0B;
+    border: 1px solid {t['border']};
+    border-radius: 4px;
+    padding: 0px 10px;
+    font-family: 'JetBrains Mono', monospace;
     font-weight: 700;
-    font-size: 12px;
+    font-size: 11px;
 }}
 
 QLabel#batteryBadge {{
     background-color: {t['bg_input']};
-    color: {t['accent']};
+    color: {t['text_main']};
     border: 1px solid {t['border']};
-    border-radius: 8px;
-    padding: 0px 12px;
+    border-radius: 4px;
+    padding: 0px 10px;
+    font-family: 'JetBrains Mono', monospace;
     font-weight: 700;
-    font-size: 12px;
+    font-size: 11px;
 }}
 """
 
@@ -1113,34 +1137,33 @@ def get_all_ratbag_mice():
 class SettingsDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Application Settings & System Diagnostics")
+        self.setWindowTitle("G HUB System Settings & Diagnostics")
         self.resize(780, 540)
         self.parent_app = parent
         self.settings = load_app_settings()
         self.setStyleSheet(generate_qss(self.settings.get("theme", "Dark Void (Default)")))
 
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(18, 18, 18, 18)
+        layout.setContentsMargins(20, 20, 20, 20)
         layout.setSpacing(14)
 
-        title = QLabel("⚙ Settings & Diagnostics Studio")
-        title.setFont(QFont("Segoe UI", 15, QFont.Weight.Bold))
-        title.setObjectName("accentTitle")
+        title = QLabel("SETTINGS & SYSTEM DIAGNOSTICS")
+        title.setObjectName("drawerTitle")
         layout.addWidget(title)
 
         tabs = QTabWidget()
         tabs.tabBar().setUsesScrollButtons(False)
-        tabs.addTab(self.create_appearance_tab(), "🎨 Appearance && Theme")
-        tabs.addTab(self.create_diagnostics_tab(), "🩺 System Diagnostics")
-        tabs.addTab(self.create_tray_tab(), "📌 System Tray && Behavior")
-        tabs.addTab(self.create_about_tab(), "ℹ️ About && GitHub")
+        tabs.addTab(self.create_appearance_tab(), "APPEARANCE")
+        tabs.addTab(self.create_diagnostics_tab(), "DIAGNOSTICS")
+        tabs.addTab(self.create_tray_tab(), "BEHAVIOR")
+        tabs.addTab(self.create_about_tab(), "ABOUT")
         layout.addWidget(tabs)
 
         btn_box = QHBoxLayout()
         btn_box.addStretch()
-        btn_close = QPushButton("✓  Done")
+        btn_close = QPushButton("CLOSE")
         btn_close.setObjectName("accentBtn")
-        btn_close.setFixedHeight(36)
+        btn_close.setFixedHeight(34)
         btn_close.clicked.connect(self.accept)
         btn_box.addWidget(btn_close)
         layout.addLayout(btn_box)
@@ -1149,13 +1172,13 @@ class SettingsDialog(QDialog):
         tab = QWidget()
         layout = QVBoxLayout(tab)
         layout.setSpacing(14)
-        layout.setContentsMargins(4, 8, 4, 4)
+        layout.setContentsMargins(4, 12, 4, 4)
 
-        grp = QGroupBox("Theme Selection && Live Color Tokens")
+        grp = QGroupBox("COLOR PALETTE && SURFACE TOKENS")
         glayout = QVBoxLayout(grp)
         glayout.setSpacing(12)
 
-        glayout.addWidget(QLabel(f"Select Visual Accent Theme ({len(THEMES)} Curated Themes Available):"))
+        glayout.addWidget(QLabel(f"ACTIVE WORKSPACE PALETTE ({len(THEMES)} PROFILES):"))
         self.combo_theme = QComboBox()
         for tname in THEMES.keys():
             self.combo_theme.addItem(tname)
@@ -1168,12 +1191,11 @@ class SettingsDialog(QDialog):
         self.combo_theme.currentIndexChanged.connect(self.on_theme_changed)
         glayout.addWidget(self.combo_theme)
 
-        theme_info = QLabel("Theme changes apply live across all window surfaces, SVG icons, and elevation shadows.")
+        theme_info = QLabel("Applies high-contrast monochrome surfaces and single sharp accent tokens across all panels.")
         theme_info.setObjectName("subText")
         glayout.addWidget(theme_info)
 
-        # Quick Theme Grid for 1-click previewing
-        grid_lbl = QLabel("Quick Theme Presets:")
+        grid_lbl = QLabel("QUICK PRESETS")
         grid_lbl.setObjectName("sectionHeader")
         glayout.addWidget(grid_lbl)
 
@@ -1208,12 +1230,12 @@ class SettingsDialog(QDialog):
         tab = QWidget()
         layout = QVBoxLayout(tab)
         layout.setSpacing(12)
-        layout.setContentsMargins(4, 8, 4, 4)
+        layout.setContentsMargins(4, 12, 4, 4)
 
         top_row = QHBoxLayout()
-        top_row.addWidget(QLabel("Live System Subsystem Health Check:"))
+        top_row.addWidget(QLabel("SUBSYSTEM TELEMETRY & DRIVER AUDIT:"))
         top_row.addStretch()
-        btn_run_diag = QPushButton("🔄  Run Health Audit")
+        btn_run_diag = QPushButton("RUN HEALTH AUDIT")
         btn_run_diag.clicked.connect(self.run_diagnostics)
         top_row.addWidget(btn_run_diag)
         layout.addLayout(top_row)
@@ -1228,26 +1250,26 @@ class SettingsDialog(QDialog):
     def run_diagnostics(self):
         report = []
         report.append("==================================================")
-        report.append(" 🩺 LOGITECH LINUX CONTROL SUITE HEALTH AUDIT")
+        report.append(" LOGITECH LINUX CONTROL SUITE HEALTH AUDIT")
         report.append(f" Timestamp: {time.strftime('%Y-%m-%d %H:%M:%S')}")
         report.append("==================================================\n")
 
         res = subprocess.run(['systemctl', '--user', 'is-active', 'g502-macros.service'], capture_output=True, text=True)
         m_status = res.stdout.strip()
-        report.append(f"[Macro Service] g502-macros.service: {'✅ ACTIVE' if m_status == 'active' else '❌ INACTIVE ('+m_status+')'}")
+        report.append(f"[Macro Service] g502-macros.service: {'[ACTIVE]' if m_status == 'active' else '[INACTIVE: '+m_status+']'}")
 
         res = subprocess.run(['systemctl', 'is-active', 'ratbagd.service'], capture_output=True, text=True)
         r_status = res.stdout.strip()
-        report.append(f"[Mouse Daemon] ratbagd.service: {'✅ ACTIVE' if r_status == 'active' else '⚠️ INACTIVE ('+r_status+')'}")
+        report.append(f"[Mouse Daemon] ratbagd.service: {'[ACTIVE]' if r_status == 'active' else '[INACTIVE: '+r_status+']'}")
 
         res = subprocess.run(['wpctl', 'status'], capture_output=True, text=True)
         pw_ok = res.returncode == 0
-        report.append(f"[Audio Daemon] PipeWire / WirePlumber: {'✅ ONLINE' if pw_ok else '❌ OFFLINE'}")
+        report.append(f"[Audio Daemon] PipeWire / WirePlumber: {'[ONLINE]' if pw_ok else '[OFFLINE]'}")
 
         dev_path = find_g733_hidraw()
         pct, b_status, mV = get_g733_battery_info()
-        report.append(f"[G733 HID++ Hardware]: {'✅ CONNECTED ('+dev_path+')' if dev_path else '⚠️ DISCONNECTED'}")
-        report.append(f"  • Battery Level: {pct}% ({b_status}, {mV} mV)")
+        report.append(f"[G733 HID++ Hardware]: {'[CONNECTED: '+dev_path+']' if dev_path else '[DISCONNECTED]'}")
+        report.append(f"  - Battery Level: {pct}% ({b_status}, {mV} mV)")
 
         self.diag_text.setText("\n".join(report))
 
@@ -1255,18 +1277,18 @@ class SettingsDialog(QDialog):
         tab = QWidget()
         layout = QVBoxLayout(tab)
         layout.setSpacing(14)
-        layout.setContentsMargins(4, 8, 4, 4)
+        layout.setContentsMargins(4, 12, 4, 4)
 
-        grp = QGroupBox("System Tray && Closing Behavior")
+        grp = QGroupBox("SYSTEM TRAY && BACKGROUND EXECUTION")
         glayout = QVBoxLayout(grp)
         glayout.setSpacing(12)
 
-        self.chk_tray = QCheckBox("Minimize application to System Tray on window close when Macro Daemon is active")
+        self.chk_tray = QCheckBox("Minimize to System Tray on close when Macro Daemon is active")
         self.chk_tray.setChecked(self.settings.get("minimize_to_tray", True))
         self.chk_tray.toggled.connect(self.on_tray_setting_changed)
         glayout.addWidget(self.chk_tray)
 
-        self.chk_notif = QCheckBox("Show System Tray Notifications on background state changes")
+        self.chk_notif = QCheckBox("Show desktop notifications on background state transitions")
         self.chk_notif.setChecked(self.settings.get("show_notifications", True))
         self.chk_notif.toggled.connect(self.on_tray_setting_changed)
         glayout.addWidget(self.chk_notif)
@@ -1284,31 +1306,29 @@ class SettingsDialog(QDialog):
         tab = QWidget()
         layout = QVBoxLayout(tab)
         layout.setSpacing(14)
-        layout.setContentsMargins(4, 8, 4, 4)
+        layout.setContentsMargins(4, 12, 4, 4)
 
-        grp = QGroupBox("About Logitech Linux Control Suite")
+        grp = QGroupBox("APPLICATION SPECIFICATION")
         glayout = QVBoxLayout(grp)
         glayout.setSpacing(12)
 
-        lbl_app = QLabel("Logitech Linux Control Suite & Macro Studio v2.6")
-        lbl_app.setFont(QFont("Segoe UI", 13, QFont.Weight.Bold))
+        lbl_app = QLabel("LOGITECH G HUB LINUX CONTROL SUITE v2.7")
         lbl_app.setObjectName("accentTitle")
         glayout.addWidget(lbl_app)
 
         lbl_desc = QLabel(
-            "An open-source native Linux control suite providing G HUB functionality for Logitech hardware:\n"
-            "• Zero-lag mouse button macros, hardware DPI tuner & exact 1:1 px/cm calibration.\n"
-            "• Headset master volume, 10-band hardware equalizer, microphone gain/mute, and sidetone.\n"
-            "• Targeted G733 HID++ RGB lighting controller.\n"
-            "• Spoken battery percentage announcements on physical power button press."
+            "Native Linux hardware configuration and telemetry interface for Logitech G peripherals:\n"
+            "- Evdev/UInput low-latency macro daemon, libratbag onboard DPI & KWin 1:1 px/cm calibration.\n"
+            "- G733 LIGHTSPEED 10-band hardware DSP equalizer, microphone gain, and zero-latency sidetone.\n"
+            "- Direct HID++ 2.0 dual-zone LIGHTSYNC RGB controller and Li-Po discharge curve telemetry."
         )
         lbl_desc.setWordWrap(True)
         lbl_desc.setObjectName("subText")
         glayout.addWidget(lbl_desc)
 
-        btn_github = QPushButton("🌐  Open GitHub Repository (gaxkalik/Logitech-Linux-App)")
+        btn_github = QPushButton("OPEN REPOSITORY (gaxkalik/Logitech-Linux-App)")
         btn_github.setObjectName("accentBtn")
-        btn_github.setFixedHeight(38)
+        btn_github.setFixedHeight(36)
         btn_github.clicked.connect(lambda: QDesktopServices.openUrl(QUrl(GITHUB_URL)))
         glayout.addWidget(btn_github)
 
@@ -1320,10 +1340,10 @@ class SettingsDialog(QDialog):
 class G502ControlApp(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Logitech Linux Control Center (Mouse & Headset)")
+        self.setWindowTitle("Logitech G HUB — Linux Control Suite")
         if os.path.exists(ICON_PATH):
             self.setWindowIcon(QIcon(ICON_PATH))
-        self.resize(1040, 780)
+        self.resize(1180, 780)
 
         self.app_settings = load_app_settings()
         current_theme = self.app_settings.get("theme", "Dark Void (Default)")
@@ -1333,105 +1353,176 @@ class G502ControlApp(QMainWindow):
         self.active_button_key = "G8"
         self.elevated_cards = []
 
-        # Setup Main UI Layout
+        # Create Interactive Hardware Stage early so inspector tabs can sync with it
+        self.stage_widget = HardwareStageWidget(DIAGRAM_PATH)
+        self.stage_widget.buttonClicked.connect(self.select_button)
+        self.stage_widget.deviceTileClicked.connect(lambda idx: self.combo_main_device.setCurrentIndex(idx))
+
+        # Root container (0px margin G HUB full-bleed layout)
         main_widget = QWidget()
         self.setCentralWidget(main_widget)
         main_layout = QVBoxLayout(main_widget)
-        main_layout.setContentsMargins(16, 16, 16, 16)
-        main_layout.setSpacing(14)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setSpacing(0)
 
-        # Header Bar (Concentric Radius: 18px outer = 8px inner + 10px inset)
+        # 1. Top G HUB Header Bar (48px height, 1px bottom structural divider)
         header = QFrame()
         header.setObjectName("headerBar")
-        self.elevated_cards.append(header)
+        header.setFixedHeight(48)
         header_layout = QHBoxLayout(header)
-        header_layout.setContentsMargins(10, 10, 10, 10)
-        header_layout.setSpacing(10)
+        header_layout.setContentsMargins(12, 0, 14, 0)
+        header_layout.setSpacing(12)
 
-        # Hamburger Menu Button (☰)
-        btn_hamburger = QPushButton("☰")
+        btn_hamburger = QPushButton()
         btn_hamburger.setObjectName("btnIcon")
-        btn_hamburger.setFixedSize(36, 36)
-        btn_hamburger.setToolTip("Quick Menu & Device Switcher")
+        btn_hamburger.setFixedSize(32, 32)
+        nav_back_svg = os.path.join(ICONS_CACHE_DIR, "nav_back.svg")
+        if os.path.exists(nav_back_svg):
+            btn_hamburger.setIcon(QIcon(nav_back_svg))
+        else:
+            btn_hamburger.setText("<")
+        btn_hamburger.setToolTip("Device Switcher & System Menu")
         btn_hamburger.clicked.connect(self.show_hamburger_menu)
         header_layout.addWidget(btn_hamburger)
 
-        title_layout = QVBoxLayout()
-        title_layout.setSpacing(1)
-        title_label = QLabel("Logitech Linux Control Suite")
-        title_label.setObjectName("headerTitle")
-        subtitle_label = QLabel("G502 Mouse Macros & G733 Wireless Headset Studio")
+        title_layout = QHBoxLayout()
+        title_layout.setSpacing(8)
+        subtitle_label = QLabel("PERSISTENT PROFILE:")
         subtitle_label.setObjectName("headerSubtitle")
-        title_layout.addWidget(title_label)
+        title_label = QLabel("DESKTOP: Default")
+        title_label.setObjectName("headerTitle")
         title_layout.addWidget(subtitle_label)
-
+        title_layout.addWidget(title_label)
         header_layout.addLayout(title_layout)
+
         header_layout.addStretch()
 
-        # Wireless Battery Indicator Badge in Header
-        self.lbl_header_battery = QLabel("🔋 G733: --%")
+        # Device Selector Dropdown
+        self.combo_main_device = QComboBox()
+        self.combo_main_device.setMinimumWidth(240)
+        self.combo_main_device.setFixedHeight(30)
+        self.combo_main_device.addItem("Logitech G502 HERO", "MOUSE")
+        self.combo_main_device.addItem("Logitech G733 LIGHTSPEED", "HEADSET")
+        self.combo_main_device.currentIndexChanged.connect(self.on_main_device_switched)
+        header_layout.addWidget(self.combo_main_device)
+
+        # Wireless Battery Telemetry Badge
+        self.lbl_header_battery = QLabel("G733: --%")
         self.lbl_header_battery.setObjectName("batteryBadge")
-        self.lbl_header_battery.setFixedHeight(36)
+        self.lbl_header_battery.setFixedHeight(28)
         self.lbl_header_battery.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.lbl_header_battery.setToolTip("Click to announce remaining battery charge out loud")
+        self.lbl_header_battery.setToolTip("Click to announce battery telemetry via speech synthesis")
         self.lbl_header_battery.setCursor(Qt.CursorShape.PointingHandCursor)
         self.lbl_header_battery.mousePressEvent = lambda ev: self.speak_current_battery()
         header_layout.addWidget(self.lbl_header_battery)
 
-        # Device Selector Dropdown (Mouse vs Headset)
-        self.combo_main_device = QComboBox()
-        self.combo_main_device.setMinimumWidth(275)
-        self.combo_main_device.setFixedHeight(36)
-        self.combo_main_device.addItem("🖱️ Logitech G502 Gaming Mouse", "MOUSE")
-        self.combo_main_device.addItem("🎧 Logitech G733 Gaming Headset", "HEADSET")
-        self.combo_main_device.currentIndexChanged.connect(self.on_main_device_switched)
-        header_layout.addWidget(self.combo_main_device)
-
-        # Daemon Status Indicator + Toggle Service Button aligned horizontally
-        self.status_badge = QLabel("● CHECKING...")
+        # Daemon Status Badge + Action Button
+        self.status_badge = QLabel("DAEMON: CHECKING")
         self.status_badge.setObjectName("statusBadgeInactive")
-        self.status_badge.setFixedHeight(36)
+        self.status_badge.setFixedHeight(28)
         self.status_badge.setAlignment(Qt.AlignmentFlag.AlignCenter)
         header_layout.addWidget(self.status_badge)
 
-        self.btn_toggle_service = QPushButton("Start Service")
+        self.btn_toggle_service = QPushButton("START DAEMON")
         self.btn_toggle_service.setObjectName("accentBtn")
-        self.btn_toggle_service.setFixedHeight(36)
+        self.btn_toggle_service.setFixedHeight(28)
         self.btn_toggle_service.clicked.connect(self.toggle_service)
         header_layout.addWidget(self.btn_toggle_service)
 
-        # Dedicated Settings Gear Button (⚙)
-        btn_settings = QPushButton("⚙")
+        btn_settings = QPushButton()
         btn_settings.setObjectName("btnIcon")
-        btn_settings.setFixedSize(36, 36)
-        btn_settings.setToolTip("Open Appearance Themes & System Diagnostics")
+        btn_settings.setFixedSize(32, 32)
+        nav_gear_svg = os.path.join(ICONS_CACHE_DIR, "nav_gear.svg")
+        if os.path.exists(nav_gear_svg):
+            btn_settings.setIcon(QIcon(nav_gear_svg))
+        else:
+            btn_settings.setText("CFG")
+        btn_settings.setToolTip("Settings & System Diagnostics")
         btn_settings.clicked.connect(self.open_settings_dialog)
         header_layout.addWidget(btn_settings)
 
         main_layout.addWidget(header)
 
-        # Stacked Widget for Device Views (0 = Mouse View, 1 = Headset View)
+        # 2. Asymmetric Split-View Workspace: [48px Icon Rail] | [395px Inspector Drawer] | [Pure #000000 Hardware Stage]
+        workspace_layout = QHBoxLayout()
+        workspace_layout.setContentsMargins(0, 0, 0, 0)
+        workspace_layout.setSpacing(0)
+
+        # 2A. Left Vertical Icon Rail (48px wide)
+        self.left_rail = QFrame()
+        self.left_rail.setObjectName("leftRail")
+        self.left_rail.setFixedWidth(48)
+        rail_layout = QVBoxLayout(self.left_rail)
+        rail_layout.setContentsMargins(0, 8, 0, 12)
+        rail_layout.setSpacing(4)
+
+        self.rail_group = QButtonGroup(self)
+        self.rail_group.setExclusive(True)
+        self.rail_buttons = []
+        self.rail_svg_Prefixes = ["rail_assign", "rail_dpi", "rail_lightsync", "rail_logs"]
+        rail_tooltips = [
+            "Assignments / Acoustics",
+            "Sensitivity (DPI) / Microphone",
+            "LIGHTSYNC RGB",
+            "Service Telemetry / Hardware Status"
+        ]
+        for r_idx, (prefix, tip) in enumerate(zip(self.rail_svg_Prefixes, rail_tooltips)):
+            rb = QPushButton()
+            rb.setObjectName("railBtn")
+            rb.setCheckable(True)
+            rb.setFixedSize(48, 48)
+            rb.setToolTip(tip)
+            rb.clicked.connect(lambda _, i=r_idx: self.on_rail_button_clicked(i))
+            self.rail_group.addButton(rb, r_idx)
+            rail_layout.addWidget(rb)
+            self.rail_buttons.append(rb)
+
+        rail_layout.addStretch()
+        workspace_layout.addWidget(self.left_rail)
+
+        # 2B. Left Inspector Drawer (395px wide, matte #18181B)
+        self.inspector_drawer = QFrame()
+        self.inspector_drawer.setObjectName("inspectorDrawer")
+        self.inspector_drawer.setFixedWidth(405)
+        drawer_layout = QVBoxLayout(self.inspector_drawer)
+        drawer_layout.setContentsMargins(18, 16, 18, 14)
+        drawer_layout.setSpacing(10)
+
+        self.lbl_drawer_title = QLabel("Assignments")
+        self.lbl_drawer_title.setObjectName("drawerTitle")
+        drawer_layout.addWidget(self.lbl_drawer_title)
+
         self.device_stack = QStackedWidget()
-        
-        # 1. Mouse View Container
+
+        # Mouse Inspector Tabs
         self.mouse_tabs = QTabWidget()
-        self.mouse_tabs.addTab(self.create_interactive_macro_tab(), "🎮  Interactive Button Studio")
-        self.mouse_tabs.addTab(self.create_dashboard_tab(), "⚙️  DPI && Pointer Speed")
-        self.mouse_tabs.addTab(self.create_rgb_tab(), "💡  RGB Lighting")
-        self.mouse_tabs.addTab(self.create_logs_tab(), "📜  Service Logs")
+        self.mouse_tabs.tabBar().setUsesScrollButtons(False)
+        self.mouse_tabs.addTab(self.create_interactive_macro_tab(), "MACROS")
+        self.mouse_tabs.addTab(self.create_dashboard_tab(), "SENSITIVITY")
+        self.mouse_tabs.addTab(self.create_rgb_tab(), "LIGHTSYNC")
+        self.mouse_tabs.addTab(self.create_logs_tab(), "TELEMETRY")
+        self.mouse_tabs.currentChanged.connect(self.on_inspector_tab_changed)
         self.device_stack.addWidget(self.mouse_tabs)
 
-        # 2. Headset View Container
+        # Headset Inspector Tabs
         self.headset_tabs = QTabWidget()
-        self.headset_tabs.addTab(self.create_headset_sound_tab(), "🔊  Sound && Equalizer")
-        self.headset_tabs.addTab(self.create_headset_mic_tab(), "🎙️  Microphone Controls")
-        self.headset_tabs.addTab(self.create_headset_rgb_tab(), "🌈  Targeted RGB Lightstrip")
-        self.headset_tabs.addTab(self.create_headset_info_tab(), "🔋  Battery && Headset Status")
+        self.headset_tabs.tabBar().setUsesScrollButtons(False)
+        self.headset_tabs.addTab(self.create_headset_sound_tab(), "ACOUSTICS")
+        self.headset_tabs.addTab(self.create_headset_mic_tab(), "MICROPHONE")
+        self.headset_tabs.addTab(self.create_headset_rgb_tab(), "LIGHTSYNC")
+        self.headset_tabs.addTab(self.create_headset_info_tab(), "HARDWARE")
+        self.headset_tabs.currentChanged.connect(self.on_inspector_tab_changed)
         self.device_stack.addWidget(self.headset_tabs)
 
-        main_layout.addWidget(self.device_stack)
+        drawer_layout.addWidget(self.device_stack)
+        workspace_layout.addWidget(self.inspector_drawer)
 
-        # Apply subtle elevation shadows to all cards
+        # 2C. Right Interactive Hardware Stage (Pure #000000 Obsidian Canvas)
+        workspace_layout.addWidget(self.stage_widget, stretch=1)
+
+        main_layout.addLayout(workspace_layout, stretch=1)
+
+        self.sync_rail_and_drawer()
         self.refresh_elevation_shadows(current_theme)
 
         # System Tray Integration
@@ -1447,11 +1538,45 @@ class G502ControlApp(QMainWindow):
         self.mic_meter_thread.level_signal.connect(self.update_mic_meter_level)
         self.mic_meter_thread.start()
 
-        # Status & Battery Refresh Timer (Updates UI silently, NEVER speaks)
+        # Status & Battery Refresh Timer
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.periodic_refresh)
         self.timer.start(5000)
         self.periodic_refresh()
+
+    def on_rail_button_clicked(self, idx):
+        active_tabs = self.mouse_tabs if self.device_stack.currentIndex() == 0 else self.headset_tabs
+        if 0 <= idx < active_tabs.count():
+            active_tabs.setCurrentIndex(idx)
+        self.sync_rail_and_drawer()
+
+    def on_inspector_tab_changed(self, idx):
+        self.sync_rail_and_drawer()
+
+    def sync_rail_and_drawer(self):
+        dev_idx = self.device_stack.currentIndex()
+        active_tabs = self.mouse_tabs if dev_idx == 0 else self.headset_tabs
+        tab_idx = active_tabs.currentIndex()
+
+        mouse_titles = ["Assignments", "Sensitivity (DPI)", "LIGHTSYNC", "System Telemetry"]
+        headset_titles = ["Acoustics", "Microphone", "LIGHTSYNC", "Hardware Telemetry"]
+        titles = mouse_titles if dev_idx == 0 else headset_titles
+        if 0 <= tab_idx < len(titles):
+            self.lbl_drawer_title.setText(titles[tab_idx])
+
+        for i, rb in enumerate(self.rail_buttons):
+            is_active = (i == tab_idx)
+            rb.blockSignals(True)
+            rb.setChecked(is_active)
+            rb.blockSignals(False)
+            prefix = self.rail_svg_Prefixes[i]
+            svg_name = f"{prefix}_{'active' if is_active else 'idle'}.svg"
+            svg_path = os.path.join(ICONS_CACHE_DIR, svg_name)
+            if os.path.exists(svg_path):
+                rb.setIcon(QIcon(svg_path))
+
+        if hasattr(self, 'stage_widget'):
+            self.stage_widget.set_device_mode("MOUSE" if dev_idx == 0 else "HEADSET")
 
     def register_card(self, card_widget):
         self.elevated_cards.append(card_widget)
@@ -1474,15 +1599,17 @@ class G502ControlApp(QMainWindow):
     def refresh_battery_status(self):
         pct, status_str, mV = get_g733_battery_info()
         if pct is not None:
-            self.lbl_header_battery.setText(f"🔋 G733: {pct}% ({status_str.split()[0]})")
+            self.lbl_header_battery.setText(f"G733: {pct}% ({status_str.split()[0].upper()})")
             if hasattr(self, 'lbl_hs_battery_pct'):
                 self.lbl_hs_battery_pct.setText(f"{pct}% ({status_str})")
                 self.bar_hs_battery.setValue(pct)
-                self.lbl_hs_mv.setText(f"Voltage: {mV} mV (Smoothed G HUB 5% steps)")
+                self.lbl_hs_mv.setText(f"CELL VOLTAGE: {mV} mV (HYSTERESIS 5% STEP)")
+            if hasattr(self, 'stage_widget'):
+                self.stage_widget.set_battery_info(pct, status_str, mV)
             if hasattr(self, 'tray_icon'):
                 self.tray_icon.setToolTip(f"Logitech Linux Control Suite — G733: {pct}% ({status_str})")
         else:
-            self.lbl_header_battery.setText("🔋 G733: Offline")
+            self.lbl_header_battery.setText("G733: OFFLINE")
 
     def speak_current_battery(self):
         """Speaks the current battery percentage out loud."""
@@ -1490,14 +1617,14 @@ class G502ControlApp(QMainWindow):
         if pct is not None:
             speak_text(f"Battery {pct} percent")
             if hasattr(self, 'lbl_hs_battery_pct'):
-                self.lbl_hs_battery_pct.setText(f"{pct}% ({status_str}) — 🔊 Announced!")
+                self.lbl_hs_battery_pct.setText(f"{pct}% ({status_str}) — ANNOUNCED")
             if hasattr(self, 'lbl_header_battery'):
-                self.lbl_header_battery.setText(f"🔊 G733: {pct}% ({status_str.split()[0]})")
+                self.lbl_header_battery.setText(f"G733: {pct}% (TTS)")
             logging.info(f"Spoken battery announcement triggered: {pct}%")
         else:
             speak_text("Headset disconnected")
             if hasattr(self, 'lbl_hs_battery_pct'):
-                self.lbl_hs_battery_pct.setText("Disconnected")
+                self.lbl_hs_battery_pct.setText("DISCONNECTED")
             logging.warning("Spoken battery check requested, but G733 headset is offline")
 
     # ------------------ System Tray Integration ------------------
@@ -1511,29 +1638,29 @@ class G502ControlApp(QMainWindow):
 
             tray_menu = QMenu(self)
 
-            action_show = QAction("🖥️ Open Control Center", self)
+            action_show = QAction("Open G HUB Control Suite", self)
             action_show.triggered.connect(self.restore_from_tray)
             tray_menu.addAction(action_show)
 
-            action_speak_bat = QAction("🔊 Hear Battery Charge %", self)
+            action_speak_bat = QAction("Announce Battery Charge (%)", self)
             action_speak_bat.triggered.connect(self.speak_current_battery)
             tray_menu.addAction(action_speak_bat)
 
-            self.action_toggle_mic = QAction("🎙️ Mute/Unmute Mic", self)
+            self.action_toggle_mic = QAction("Toggle Microphone Mute", self)
             self.action_toggle_mic.triggered.connect(self.toggle_headset_mic)
             tray_menu.addAction(self.action_toggle_mic)
 
-            self.action_toggle_daemon = QAction("⚡ Toggle Macro Service", self)
+            self.action_toggle_daemon = QAction("Toggle Macro Service", self)
             self.action_toggle_daemon.triggered.connect(self.toggle_service)
             tray_menu.addAction(self.action_toggle_daemon)
 
             tray_menu.addSeparator()
 
-            action_settings = QAction("⚙️ Settings", self)
+            action_settings = QAction("Settings & Diagnostics", self)
             action_settings.triggered.connect(self.open_settings_dialog)
             tray_menu.addAction(action_settings)
 
-            action_quit = QAction("🚪 Quit App", self)
+            action_quit = QAction("Quit Application", self)
             action_quit.triggered.connect(QApplication.quit)
             tray_menu.addAction(action_quit)
 
@@ -1562,7 +1689,7 @@ class G502ControlApp(QMainWindow):
         if minimize_pref and service_active:
             event.ignore()
             self.hide()
-            if settings.get("show_notifications", True):
+            if settings.get("show_notifications", True) and hasattr(self, 'tray_icon'):
                 self.tray_icon.showMessage(
                     "Logitech Control Suite",
                     "Application minimized to system tray. Macro daemon remains active in background.",
@@ -1573,36 +1700,39 @@ class G502ControlApp(QMainWindow):
             if hasattr(self, 'listener_thread'):
                 self.listener_thread.requestInterruption()
                 self.listener_thread.wait(500)
+            if hasattr(self, 'mic_meter_thread'):
+                self.mic_meter_thread.requestInterruption()
+                self.mic_meter_thread.wait(500)
             event.accept()
 
     def show_hamburger_menu(self):
         menu = QMenu(self)
         
-        act_mouse = menu.addAction("🖱️ Switch to G502 Gaming Mouse")
+        act_mouse = menu.addAction("Switch to G502 HERO Gaming Mouse")
         act_mouse.triggered.connect(lambda: self.combo_main_device.setCurrentIndex(0))
         
-        act_headset = menu.addAction("🎧 Switch to G733 Gaming Headset")
+        act_headset = menu.addAction("Switch to G733 LIGHTSPEED Headset")
         act_headset.triggered.connect(lambda: self.combo_main_device.setCurrentIndex(1))
         
         menu.addSeparator()
-        act_settings = menu.addAction("⚙️ Settings && Diagnostics Studio")
+        act_settings = menu.addAction("Settings & System Diagnostics")
         act_settings.triggered.connect(self.open_settings_dialog)
 
         menu.addSeparator()
-        act_speak = menu.addAction("🔊 Hear Remaining Battery Charge %")
+        act_speak = menu.addAction("Announce Remaining Battery (%)")
         act_speak.triggered.connect(self.speak_current_battery)
 
-        act_mic = menu.addAction("🎙️ Toggle Headset Mic Mute")
+        act_mic = menu.addAction("Toggle Microphone Mute")
         act_mic.triggered.connect(self.toggle_headset_mic)
 
-        act_toggle = menu.addAction("⚡ Toggle Background Macro Service")
+        act_toggle = menu.addAction("Toggle Background Macro Daemon")
         act_toggle.triggered.connect(self.toggle_service)
 
         menu.addSeparator()
-        act_github = menu.addAction("🌐 Open GitHub Repository")
+        act_github = menu.addAction("Open GitHub Repository")
         act_github.triggered.connect(lambda: QDesktopServices.openUrl(QUrl(GITHUB_URL)))
 
-        act_quit = menu.addAction("❌ Quit Control Center")
+        act_quit = menu.addAction("Quit Control Suite")
         act_quit.triggered.connect(QApplication.instance().quit)
 
         btn = self.sender()
@@ -1617,6 +1747,7 @@ class G502ControlApp(QMainWindow):
 
     def on_main_device_switched(self, idx):
         self.device_stack.setCurrentIndex(idx)
+        self.sync_rail_and_drawer()
 
     # ------------------ Mouse Customization Tabs ------------------
     def get_selected_ratbag_dev_id(self):
@@ -1642,75 +1773,59 @@ class G502ControlApp(QMainWindow):
     def create_interactive_macro_tab(self):
         tab = QWidget()
         layout = QVBoxLayout(tab)
-        layout.setSpacing(14)
-        layout.setContentsMargins(2, 4, 2, 2)
+        layout.setSpacing(10)
+        layout.setContentsMargins(0, 8, 0, 0)
 
         config_data = self.load_macro_config()
         self.buttons_cfg = config_data.get("buttons", {})
 
-        content_layout = QHBoxLayout()
-        content_layout.setSpacing(16)
-
-        # Left Card: Physical Mouse Button Map + Hardware Diagram
-        left_card = self.register_card(QGroupBox("Select Mouse Button to Customize"))
-        model_column = QVBoxLayout(left_card)
-        model_column.setSpacing(8)
-        model_column.setContentsMargins(12, 10, 12, 12)
-
-        if os.path.exists(DIAGRAM_PATH):
-            lbl_diag = QLabel()
-            lbl_diag.setObjectName("diagramImage")
-            pix = QPixmap(DIAGRAM_PATH).scaledToHeight(165, Qt.TransformationMode.SmoothTransformation)
-            lbl_diag.setPixmap(pix)
-            lbl_diag.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            model_column.addWidget(lbl_diag)
+        # Section 1: Physical Button Selection List (1px structural divider rows)
+        hdr_select = QLabel("PHYSICAL INPUT CHANNELS")
+        hdr_select.setObjectName("sectionHeader")
+        layout.addWidget(hdr_select)
 
         self.btn_group = QButtonGroup(self)
         self.btn_group.setExclusive(True)
 
         buttons_list_info = [
-            ("G8", "G8 — Resolution Up (Top Button)"),
-            ("TILT_LEFT", "Wheel Tilt Left (Scroll Left)"),
-            ("TILT_RIGHT", "Wheel Tilt Right (Scroll Right)"),
-            ("G7", "G7 — Resolution Down (Thumb/Side)"),
-            ("G9", "G9 — Resolution Switch (Profile)")
+            ("G8", "[M]  G8  —  Resolution Up (Top)"),
+            ("TILT_LEFT", "[M]  TILT LEFT  —  Wheel Scroll Left"),
+            ("TILT_RIGHT", "[M]  TILT RIGHT  —  Wheel Scroll Right"),
+            ("G7", "[M]  G7  —  Resolution Down (Index)"),
+            ("G9", "[M]  G9  —  Profile Cycle (Center)")
         ]
 
         self.selector_buttons = {}
         for btn_key, btn_label in buttons_list_info:
-            b = QPushButton(f"●   {btn_label}")
+            b = QPushButton(btn_label)
             b.setObjectName("btnSelector")
             b.setCheckable(True)
-            b.setFixedHeight(38)
+            b.setFixedHeight(32)
             if btn_key == self.active_button_key:
                 b.setChecked(True)
             b.clicked.connect(lambda _, k=btn_key: self.select_button(k))
             self.btn_group.addButton(b)
-            model_column.addWidget(b)
+            layout.addWidget(b)
             self.selector_buttons[btn_key] = b
 
-        model_column.addStretch()
-        content_layout.addWidget(left_card, stretch=4)
-
-        # Right Card: Macro Action & Timing Customizer
-        self.customizer_box = self.register_card(QGroupBox("Customize Selected Button Macro"))
+        # Section 2: Macro Action & Timing Parameters
+        self.customizer_box = self.register_card(QGroupBox("MACRO SEQUENCE PARAMETERS"))
         customizer_layout = QVBoxLayout(self.customizer_box)
-        customizer_layout.setSpacing(12)
-        customizer_layout.setContentsMargins(14, 10, 14, 14)
+        customizer_layout.setSpacing(8)
+        customizer_layout.setContentsMargins(0, 8, 0, 4)
 
-        self.selected_title_lbl = QLabel("Editing: G8 — Resolution Up")
-        self.selected_title_lbl.setFont(QFont("Segoe UI", 13, QFont.Weight.Bold))
+        self.selected_title_lbl = QLabel("CHANNEL: G8 — RESOLUTION UP")
         self.selected_title_lbl.setObjectName("accentTitle")
         customizer_layout.addWidget(self.selected_title_lbl)
 
-        customizer_layout.addWidget(QLabel("Assigned Macro Behavior:"))
+        customizer_layout.addWidget(QLabel("ASSIGNED MACRO BEHAVIOR"))
         self.combo_action = QComboBox()
         for label, code in ACTION_TYPES:
             self.combo_action.addItem(label, code)
         self.combo_action.currentIndexChanged.connect(self.on_active_action_changed)
         customizer_layout.addWidget(self.combo_action)
 
-        self.lbl_custom_key = QLabel("Custom Key to Repeat:")
+        self.lbl_custom_key = QLabel("KEYCODE BINDING")
         customizer_layout.addWidget(self.lbl_custom_key)
         self.combo_key = QComboBox()
         for label, code in CUSTOM_KEYS:
@@ -1718,21 +1833,32 @@ class G502ControlApp(QMainWindow):
         self.combo_key.currentIndexChanged.connect(self.on_active_field_changed)
         customizer_layout.addWidget(self.combo_key)
 
-        customizer_layout.addWidget(QLabel("Key / Click Hold Duration (ms):"))
+        timing_row = QHBoxLayout()
+        timing_row.setSpacing(10)
+
+        hold_col = QVBoxLayout()
+        hold_col.setSpacing(4)
+        hold_col.addWidget(QLabel("HOLD DURATION"))
         self.spin_hold = QSpinBox()
         self.spin_hold.setRange(5, 500)
         self.spin_hold.setSingleStep(5)
         self.spin_hold.setSuffix(" ms")
         self.spin_hold.valueChanged.connect(self.on_active_field_changed)
-        customizer_layout.addWidget(self.spin_hold)
+        hold_col.addWidget(self.spin_hold)
+        timing_row.addLayout(hold_col)
 
-        customizer_layout.addWidget(QLabel("Loop Repeat Interval Delay (ms):"))
+        delay_col = QVBoxLayout()
+        delay_col.setSpacing(4)
+        delay_col.addWidget(QLabel("REPEAT INTERVAL"))
         self.spin_delay = QSpinBox()
         self.spin_delay.setRange(5, 1000)
         self.spin_delay.setSingleStep(5)
         self.spin_delay.setSuffix(" ms")
         self.spin_delay.valueChanged.connect(self.on_active_field_changed)
-        customizer_layout.addWidget(self.spin_delay)
+        delay_col.addWidget(self.spin_delay)
+        timing_row.addLayout(delay_col)
+
+        customizer_layout.addLayout(timing_row)
 
         summary_frame = QFrame()
         summary_frame.setObjectName("summaryBox")
@@ -1744,34 +1870,33 @@ class G502ControlApp(QMainWindow):
         summary_layout.addWidget(self.summary_lbl)
         customizer_layout.addWidget(summary_frame)
 
-        customizer_layout.addStretch()
-        content_layout.addWidget(self.customizer_box, stretch=5)
+        layout.addWidget(self.customizer_box)
+        layout.addStretch()
 
-        layout.addLayout(content_layout)
-
-        btn_bar = QHBoxLayout()
-        btn_save = QPushButton("💾   Save && Apply All Macro Settings (Auto-Restarts Service)")
+        btn_save = QPushButton("SAVE && COMMIT TO DAEMON")
         btn_save.setObjectName("accentBtn")
-        btn_save.setFixedHeight(42)
-        btn_save.setFont(QFont("Segoe UI", 11, QFont.Weight.Bold))
+        btn_save.setFixedHeight(36)
         btn_save.clicked.connect(self.save_macro_config)
-        btn_bar.addWidget(btn_save)
-
-        layout.addLayout(btn_bar)
+        layout.addWidget(btn_save)
 
         self.select_button("G8")
         return tab
 
     def select_button(self, btn_key):
         self.active_button_key = btn_key
+        if hasattr(self, 'selector_buttons') and btn_key in self.selector_buttons:
+            self.selector_buttons[btn_key].blockSignals(True)
+            self.selector_buttons[btn_key].setChecked(True)
+            self.selector_buttons[btn_key].blockSignals(False)
+
         btn_titles = {
-            "G8": "G8 — Resolution Up (Top Button)",
-            "TILT_LEFT": "Wheel Tilt Left (Scroll Left)",
-            "TILT_RIGHT": "Wheel Tilt Right (Scroll Right)",
-            "G7": "G7 — Resolution Down (Thumb/Side)",
-            "G9": "G9 — Resolution Switch (Profile)"
+            "G8": "G8 — RESOLUTION UP",
+            "TILT_LEFT": "TILT LEFT — SCROLL LEFT",
+            "TILT_RIGHT": "TILT RIGHT — SCROLL RIGHT",
+            "G7": "G7 — RESOLUTION DOWN",
+            "G9": "G9 — PROFILE CYCLE"
         }
-        self.selected_title_lbl.setText(f"Editing Macro: {btn_titles.get(btn_key, btn_key)}")
+        self.selected_title_lbl.setText(f"CHANNEL: {btn_titles.get(btn_key, btn_key)}")
 
         btn_data = self.buttons_cfg.get(btn_key, {})
         action_type = btn_data.get("action_type", "LEFT_CLICK_LOOP")
@@ -1836,6 +1961,13 @@ class G502ControlApp(QMainWindow):
         else:
             self.summary_lbl.setText(f"Summary: Holding {btn_key} will repeat {action_text} ({hold_ms}ms hold / {delay_ms}ms delay).")
 
+        if hasattr(self, 'stage_widget'):
+            self.stage_widget.set_mouse_state(
+                self.active_button_key,
+                self.buttons_cfg,
+                getattr(self, 'dpi_slider', None).value() if hasattr(self, 'dpi_slider') else 800
+            )
+
     def save_macro_config(self):
         new_cfg = {"buttons": self.buttons_cfg}
         os.makedirs(os.path.dirname(CONFIG_PATH), exist_ok=True)
@@ -1850,39 +1982,21 @@ class G502ControlApp(QMainWindow):
     def create_dashboard_tab(self):
         tab = QWidget()
         layout = QVBoxLayout(tab)
-        layout.setSpacing(14)
-        layout.setContentsMargins(2, 4, 2, 2)
+        layout.setSpacing(12)
+        layout.setContentsMargins(0, 8, 0, 0)
 
-        guide = self.register_card(QFrame())
-        guide.setObjectName("guideBox")
-        guide_layout = QVBoxLayout(guide)
-        guide_layout.setContentsMargins(12, 10, 12, 10)
-        guide_title = QLabel("💡 DPI & Pointer Speed Reference Guide")
-        guide_title.setFont(QFont("Segoe UI", 11, QFont.Weight.Bold))
-        guide_title.setObjectName("accentTitle")
-        guide_text = QLabel(
-            "• Hardware DPI: Optical sensor resolution stored on mouse onboard memory via libratbagd.\n"
-            "• Flat Acceleration (1:1): Raw linear input matching Windows 6/11 with Enhance Pointer Precision OFF.\n"
-            "• Perfect 1:1 Calibration: Computes the exact sub-decimal KWin multiplier for your target physical px/cm."
-        )
-        guide_text.setObjectName("subText")
-        guide_layout.addWidget(guide_title)
-        guide_layout.addWidget(guide_text)
-        layout.addWidget(guide)
-
-        dpi_group = self.register_card(QGroupBox("Hardware DPI Settings (Onboard Profiles)"))
+        dpi_group = self.register_card(QGroupBox("ONBOARD SENSOR RESOLUTION (DPI)"))
         dpi_layout = QVBoxLayout(dpi_group)
-        dpi_layout.setSpacing(10)
+        dpi_layout.setSpacing(8)
+        dpi_layout.setContentsMargins(0, 8, 0, 6)
 
         dpi_top_layout = QHBoxLayout()
-        dpi_label = QLabel("Active Hardware Sensor DPI:")
-        dpi_label.setFont(QFont("Segoe UI", 11, QFont.Weight.Bold))
+        dpi_label = QLabel("ACTIVE SENSOR DPI")
         self.dpi_val_label = QLabel("800 DPI")
         self.dpi_val_label.setObjectName("valueBadge")
         dpi_top_layout.addWidget(dpi_label)
-        dpi_top_layout.addWidget(self.dpi_val_label)
         dpi_top_layout.addStretch()
-
+        dpi_top_layout.addWidget(self.dpi_val_label)
         dpi_layout.addLayout(dpi_top_layout)
 
         self.dpi_slider = QSlider(Qt.Orientation.Horizontal)
@@ -1892,37 +2006,33 @@ class G502ControlApp(QMainWindow):
         self.dpi_slider.valueChanged.connect(self.on_dpi_slider_changed)
         dpi_layout.addWidget(self.dpi_slider)
 
-        preset_layout = QHBoxLayout()
-        preset_layout.addWidget(QLabel("Quick Presets:"))
-        for dpi in [400, 800, 1000, 1200, 1600, 2400, 3200]:
+        preset_grid = QGridLayout()
+        preset_grid.setSpacing(6)
+        for i, dpi in enumerate([400, 800, 1000, 1200, 1600, 2400, 3200]):
             btn = QPushButton(f"{dpi}")
-            btn.setFixedWidth(68)
             btn.clicked.connect(lambda _, d=dpi: self.set_dpi(d))
-            preset_layout.addWidget(btn)
-        preset_layout.addStretch()
-        dpi_layout.addLayout(preset_layout)
+            preset_grid.addWidget(btn, i // 4, i % 4)
+        dpi_layout.addLayout(preset_grid)
 
         layout.addWidget(dpi_group)
 
-        speed_group = self.register_card(QGroupBox("Desktop Pointer Speed && Acceleration (KDE KWin / libinput)"))
+        speed_group = self.register_card(QGroupBox("LIBINPUT / KWIN POINTER SCALING"))
         speed_layout = QVBoxLayout(speed_group)
-        speed_layout.setSpacing(10)
+        speed_layout.setSpacing(8)
+        speed_layout.setContentsMargins(0, 8, 0, 6)
 
-        profile_layout = QHBoxLayout()
-        profile_layout.addWidget(QLabel("Acceleration Profile:"))
+        speed_layout.addWidget(QLabel("ACCELERATION PROFILE"))
         self.combo_profile = QComboBox()
-        self.combo_profile.addItems(["Flat (1:1 Raw Linear - Recommended)", "Adaptive (Windows-style Curve)"])
+        self.combo_profile.addItems(["Flat (1:1 Raw Linear)", "Adaptive (Velocity Curve)"])
         self.combo_profile.currentIndexChanged.connect(self.on_accel_profile_changed)
-        profile_layout.addWidget(self.combo_profile)
-        profile_layout.addStretch()
-        speed_layout.addLayout(profile_layout)
+        speed_layout.addWidget(self.combo_profile)
 
         speed_slider_layout = QHBoxLayout()
-        speed_slider_layout.addWidget(QLabel("Pointer Speed Scale:"))
+        speed_slider_layout.addWidget(QLabel("SCALING MULTIPLIER"))
+        speed_slider_layout.addStretch()
         self.speed_val_label = QLabel("0.600")
         self.speed_val_label.setObjectName("valueBadge")
         speed_slider_layout.addWidget(self.speed_val_label)
-        speed_slider_layout.addStretch()
         speed_layout.addLayout(speed_slider_layout)
 
         self.speed_slider = QSlider(Qt.Orientation.Horizontal)
@@ -1933,61 +2043,65 @@ class G502ControlApp(QMainWindow):
 
         layout.addWidget(speed_group)
         
-        calib_group = self.register_card(QGroupBox("Perfect 1:1 Pixel-per-Centimeter Calibration"))
+        calib_group = self.register_card(QGroupBox("1:1 PHYSICAL DISPLACEMENT CALIBRATION"))
         calib_layout = QVBoxLayout(calib_group)
-        calib_layout.setSpacing(10)
+        calib_layout.setSpacing(8)
+        calib_layout.setContentsMargins(0, 8, 0, 6)
+
         calib_row = QHBoxLayout()
-        calib_row.addWidget(QLabel("Target Pixels per cm:"))
+        calib_row.addWidget(QLabel("TARGET RATIO:"))
         self.spin_px_cm = QDoubleSpinBox()
         self.spin_px_cm.setRange(10.0, 5000.0)
         self.spin_px_cm.setDecimals(2)
         self.spin_px_cm.setValue(265.72)
         self.spin_px_cm.setSuffix(" px/cm")
-        self.spin_px_cm.setMinimumWidth(140)
         calib_row.addWidget(self.spin_px_cm)
-        
-        btn_calib = QPushButton("🎯  Calibrate Exact 1:1 Mapping")
-        btn_calib.setObjectName("accentBtn")
-        btn_calib.clicked.connect(self.apply_exact_calibration)
-        calib_row.addWidget(btn_calib)
-        calib_row.addStretch()
         calib_layout.addLayout(calib_row)
         
-        calib_help = QLabel("Locks hardware DPI to 1000 and calculates the exact floating-point KWin pointer multiplier (flat profile) to physically match your Windows px/cm sensitivity.")
+        btn_calib = QPushButton("APPLY EXACT 1:1 CALIBRATION")
+        btn_calib.setObjectName("accentBtn")
+        btn_calib.setFixedHeight(34)
+        btn_calib.clicked.connect(self.apply_exact_calibration)
+        calib_layout.addWidget(btn_calib)
+        
+        calib_help = QLabel("Sets sensor to 1000 DPI and computes the exact flat libinput scalar to match physical Windows displacement.")
         calib_help.setObjectName("subText")
         calib_help.setWordWrap(True)
         calib_layout.addWidget(calib_help)
         
         layout.addWidget(calib_group)
-        
         layout.addStretch()
         return tab
 
     def create_rgb_tab(self):
         tab = QWidget()
         layout = QVBoxLayout(tab)
-        layout.setSpacing(14)
-        layout.setContentsMargins(2, 4, 2, 2)
+        layout.setSpacing(12)
+        layout.setContentsMargins(0, 8, 0, 0)
 
-        rgb_group = self.register_card(QGroupBox("OpenRGB && Mouse Lighting Integration"))
+        rgb_group = self.register_card(QGroupBox("G502 LIGHTSYNC && HARDWARE PROFILES"))
         rgb_layout = QVBoxLayout(rgb_group)
-        rgb_layout.setSpacing(12)
+        rgb_layout.setSpacing(10)
+        rgb_layout.setContentsMargins(0, 8, 0, 6)
 
-        rgb_layout.addWidget(QLabel("Manage OpenRGB lighting profiles and official Piper hardware configuration:"))
+        lbl_info = QLabel("Control onboard RGB zones via OpenRGB or launch the ratbagd/Piper hardware profile utility:")
+        lbl_info.setWordWrap(True)
+        lbl_info.setObjectName("subText")
+        rgb_layout.addWidget(lbl_info)
 
-        btn_apply_black = QPushButton("🌑  Apply 'ALL Black' Stealth Preset Now")
+        btn_apply_black = QPushButton("APPLY STEALTH (ALL LEDS OFF) PROFILE")
         btn_apply_black.setObjectName("accentBtn")
-        btn_apply_black.setFixedHeight(38)
+        btn_apply_black.setFixedHeight(36)
         btn_apply_black.clicked.connect(self.apply_all_black_rgb)
         rgb_layout.addWidget(btn_apply_black)
 
-        btn_piper_gui = QPushButton("🖱️  Launch Official Piper GTK App")
-        btn_piper_gui.setFixedHeight(38)
+        btn_piper_gui = QPushButton("LAUNCH PIPER HARDWARE UTILITY")
+        btn_piper_gui.setFixedHeight(36)
         btn_piper_gui.clicked.connect(lambda: subprocess.Popen(['piper']))
         rgb_layout.addWidget(btn_piper_gui)
 
-        btn_openrgb_gui = QPushButton("🌈  Launch Full OpenRGB Studio GUI")
-        btn_openrgb_gui.setFixedHeight(38)
+        btn_openrgb_gui = QPushButton("LAUNCH OPENRGB CONTROLLER")
+        btn_openrgb_gui.setFixedHeight(36)
         btn_openrgb_gui.clicked.connect(lambda: subprocess.Popen(['openrgb', '--gui']))
         rgb_layout.addWidget(btn_openrgb_gui)
 
@@ -1998,28 +2112,23 @@ class G502ControlApp(QMainWindow):
     def create_logs_tab(self):
         tab = QWidget()
         layout = QVBoxLayout(tab)
-        layout.setSpacing(12)
-        layout.setContentsMargins(2, 4, 2, 2)
-
-        log_group = self.register_card(QGroupBox("Systemd Macro Service Journal Logs"))
-        log_layout = QVBoxLayout(log_group)
-        log_layout.setSpacing(10)
+        layout.setSpacing(10)
+        layout.setContentsMargins(0, 8, 0, 0)
 
         top_layout = QHBoxLayout()
-        top_layout.addWidget(QLabel("Live stream from g502-macros.service:"))
+        lbl_hdr = QLabel("SYSTEMD DAEMON JOURNAL")
+        lbl_hdr.setObjectName("sectionHeader")
+        top_layout.addWidget(lbl_hdr)
         top_layout.addStretch()
 
-        btn_refresh = QPushButton("🔄  Refresh Logs")
+        btn_refresh = QPushButton("REFRESH")
         btn_refresh.clicked.connect(self.refresh_logs)
         top_layout.addWidget(btn_refresh)
-
-        log_layout.addLayout(top_layout)
+        layout.addLayout(top_layout)
 
         self.log_view = QTextEdit()
         self.log_view.setReadOnly(True)
-        log_layout.addWidget(self.log_view)
-
-        layout.addWidget(log_group)
+        layout.addWidget(self.log_view)
 
         self.refresh_logs()
         return tab
@@ -2028,21 +2137,22 @@ class G502ControlApp(QMainWindow):
     def create_headset_sound_tab(self):
         tab = QWidget()
         layout = QVBoxLayout(tab)
-        layout.setSpacing(14)
-        layout.setContentsMargins(2, 4, 2, 2)
+        layout.setSpacing(12)
+        layout.setContentsMargins(0, 8, 0, 0)
 
-        vol_group = self.register_card(QGroupBox("Master Headphone Audio Volume && Output Sink"))
+        vol_group = self.register_card(QGroupBox("MASTER ACOUSTIC OUTPUT"))
         vlayout = QVBoxLayout(vol_group)
-        vlayout.setSpacing(10)
+        vlayout.setSpacing(8)
+        vlayout.setContentsMargins(0, 8, 0, 6)
 
         v_top = QHBoxLayout()
-        v_top.addWidget(QLabel("Headset Master Volume:"))
+        v_top.addWidget(QLabel("OUTPUT GAIN"))
         self.lbl_hs_vol = QLabel("56%")
         self.lbl_hs_vol.setObjectName("valueBadge")
         v_top.addWidget(self.lbl_hs_vol)
         v_top.addStretch()
         
-        self.btn_hs_mute = QPushButton("🔊  Mute Audio")
+        self.btn_hs_mute = QPushButton("MUTE OUTPUT")
         self.btn_hs_mute.clicked.connect(self.toggle_headset_audio_mute)
         v_top.addWidget(self.btn_hs_mute)
 
@@ -2056,25 +2166,25 @@ class G502ControlApp(QMainWindow):
 
         layout.addWidget(vol_group)
 
-        eq_group = self.register_card(QGroupBox("Headphone 10-Band Hardware Equalizer && Audio Presets"))
+        eq_group = self.register_card(QGroupBox("10-BAND HARDWARE DSP EQUALIZER"))
         eq_layout = QVBoxLayout(eq_group)
-        eq_layout.setSpacing(14)
+        eq_layout.setSpacing(10)
+        eq_layout.setContentsMargins(0, 8, 0, 6)
 
-        preset_box = QHBoxLayout()
-        preset_box.addWidget(QLabel("Audio Profile Presets:"))
-        for preset_name in ["Flat 1:1", "FPS Gaming", "Bass Boost", "Cinematic"]:
+        preset_grid = QGridLayout()
+        preset_grid.setSpacing(6)
+        for idx_p, preset_name in enumerate(["Flat 1:1", "FPS Gaming", "Bass Boost", "Cinematic"]):
             btn = QPushButton(preset_name)
             btn.clicked.connect(lambda _, p=preset_name: self.apply_eq_preset(p))
-            preset_box.addWidget(btn)
-        preset_box.addStretch()
-        eq_layout.addLayout(preset_box)
+            preset_grid.addWidget(btn, idx_p // 2, idx_p % 2)
+        eq_layout.addLayout(preset_grid)
 
         bands_layout = QHBoxLayout()
-        bands = [("60Hz\nLow Bass", 0), ("250Hz\nBass", 0), ("1kHz\nMids", 0), ("4kHz\nHighs", 0), ("12kHz\nTreble", 0)]
+        bands = [("60Hz\nSUB", 0), ("250Hz\nLOW", 0), ("1kHz\nMID", 0), ("4kHz\nHIGH", 0), ("12kHz\nAIR", 0)]
         self.eq_sliders = []
         for name, def_val in bands:
             bcol = QVBoxLayout()
-            bcol.setSpacing(8)
+            bcol.setSpacing(6)
             lbl_name = QLabel(name)
             lbl_name.setAlignment(Qt.AlignmentFlag.AlignCenter)
             lbl_name.setObjectName("subText")
@@ -2082,7 +2192,7 @@ class G502ControlApp(QMainWindow):
             sl = QSlider(Qt.Orientation.Vertical)
             sl.setRange(-12, 12)
             sl.setValue(def_val)
-            sl.setFixedHeight(135)
+            sl.setFixedHeight(140)
             bcol.addWidget(sl, alignment=Qt.AlignmentFlag.AlignCenter)
             lbl_val = QLabel("0 dB")
             lbl_val.setObjectName("valueBadge")
@@ -2096,45 +2206,39 @@ class G502ControlApp(QMainWindow):
         layout.addWidget(eq_group)
         layout.addStretch()
         
-        # Try to initialize EQ on start
         QTimer.singleShot(500, self.on_eq_changed)
-        
         return tab
 
     def on_eq_changed(self):
         try:
-            # Get the 5 slider values
             v = [sl.value() for sl in self.eq_sliders]
-            if len(v) != 5: return
-            
-            # Map 5 bands to G733's 10 bands (32, 64, 125, 250, 500, 1k, 2k, 4k, 8k, 16k)
+            if len(v) != 5:
+                return
+
+            if hasattr(self, 'stage_widget'):
+                self.stage_widget.set_eq_bands(v)
+
             bands_10 = [
-                v[0],            # 32Hz  (Low Bass)
-                v[0],            # 64Hz  
-                (v[0]+v[1])//2,  # 125Hz 
-                v[1],            # 250Hz (Bass)
-                (v[1]+v[2])//2,  # 500Hz
-                v[2],            # 1kHz  (Mids)
-                (v[2]+v[3])//2,  # 2kHz
-                v[3],            # 4kHz  (Highs)
-                (v[3]+v[4])//2,  # 8kHz
-                v[4],            # 16kHz (Treble)
+                v[0],
+                v[0],
+                (v[0]+v[1])//2,
+                v[1],
+                (v[1]+v[2])//2,
+                v[2],
+                (v[2]+v[3])//2,
+                v[3],
+                (v[3]+v[4])//2,
+                v[4],
             ]
+            bands_10_bytes = [(x + 256) % 256 for x in bands_10]
             
-            # Ensure signed bytes (8-bit two's complement)
-            bands_10_bytes = [ (x + 256) % 256 for x in bands_10 ]
-            
-            # Send to hidraw asynchronously
             def _send_eq():
                 dev_path = find_g733_hidraw()
-                if not dev_path: return
+                if not dev_path:
+                    return
                 try:
                     fd = os.open(dev_path, os.O_RDWR | os.O_NONBLOCK)
-                    
-                    # 1. Ask Root feature 0x0000 for Equalizer feature index (0x8310)
                     os.write(fd, bytes([0x11, 0xFF, 0x00, 0x10, 0x83, 0x10] + [0]*14))
-                    
-                    # Wait and read response
                     import select
                     r, _, _ = select.select([fd], [], [], 0.5)
                     eq_idx = 0
@@ -2147,19 +2251,15 @@ class G502ControlApp(QMainWindow):
                                     break
                             except BlockingIOError:
                                 break
-                                
-                    # 2. If feature index found, SET EQUALIZER (Command 0x20)
                     if eq_idx != 0:
                         cmd = bytes([0x11, 0xFF, eq_idx, 0x20] + bands_10_bytes + [0]*(16 - len(bands_10_bytes)))
                         os.write(fd, cmd)
                         logging.info(f"Set G733 native hardware Equalizer: {bands_10}")
-                        
                     os.close(fd)
                 except Exception as e:
                     logging.error(f"Error setting EQ: {e}")
             
             threading.Thread(target=_send_eq, daemon=True).start()
-            
         except Exception as ex:
             logging.error(f"Failed to process eq changed: {ex}")
 
@@ -2167,6 +2267,13 @@ class G502ControlApp(QMainWindow):
         self.lbl_hs_vol.setText(f"{val}%")
         vol_float = val / 100.0
         subprocess.run(['wpctl', 'set-volume', '@DEFAULT_AUDIO_SINK@', f"{vol_float:.2f}"], stdout=subprocess.DEVNULL)
+        if hasattr(self, 'stage_widget'):
+            self.stage_widget.set_audio_telemetry(
+                val,
+                self.mic_vol_slider.value() if hasattr(self, 'mic_vol_slider') else 100,
+                self.side_slider.value() if hasattr(self, 'side_slider') else 30,
+                "MUTED" in self.btn_mic_mute.text() if hasattr(self, 'btn_mic_mute') else False
+            )
 
     def toggle_headset_audio_mute(self):
         subprocess.run(['wpctl', 'set-mute', '@DEFAULT_AUDIO_SINK@', 'toggle'], stdout=subprocess.DEVNULL)
@@ -2185,21 +2292,22 @@ class G502ControlApp(QMainWindow):
     def create_headset_mic_tab(self):
         tab = QWidget()
         layout = QVBoxLayout(tab)
-        layout.setSpacing(14)
-        layout.setContentsMargins(2, 4, 2, 2)
+        layout.setSpacing(12)
+        layout.setContentsMargins(0, 8, 0, 0)
 
-        mic_group = self.register_card(QGroupBox("Microphone Gain && Mute Controls"))
+        mic_group = self.register_card(QGroupBox("MICROPHONE INPUT GAIN && STATE"))
         mlayout = QVBoxLayout(mic_group)
-        mlayout.setSpacing(10)
+        mlayout.setSpacing(8)
+        mlayout.setContentsMargins(0, 8, 0, 6)
 
         m_top = QHBoxLayout()
-        m_top.addWidget(QLabel("Mic Gain Level:"))
+        m_top.addWidget(QLabel("INPUT GAIN"))
         self.lbl_mic_vol = QLabel("100%")
         self.lbl_mic_vol.setObjectName("valueBadge")
         m_top.addWidget(self.lbl_mic_vol)
         m_top.addStretch()
 
-        self.btn_mic_mute = QPushButton("🎙️  Mic LIVE (Click to Mute)")
+        self.btn_mic_mute = QPushButton("MIC: LIVE")
         self.btn_mic_mute.setObjectName("accentBtn")
         self.btn_mic_mute.clicked.connect(self.toggle_headset_mic)
         m_top.addWidget(self.btn_mic_mute)
@@ -2214,12 +2322,13 @@ class G502ControlApp(QMainWindow):
 
         layout.addWidget(mic_group)
 
-        side_group = self.register_card(QGroupBox("Sidetone (Hardware Microphone Monitoring)"))
+        side_group = self.register_card(QGroupBox("HARDWARE SIDETONE MONITORING"))
         slayout = QVBoxLayout(side_group)
-        slayout.setSpacing(10)
+        slayout.setSpacing(8)
+        slayout.setContentsMargins(0, 8, 0, 6)
 
         s_top = QHBoxLayout()
-        s_top.addWidget(QLabel("Sidetone Feedback Volume:"))
+        s_top.addWidget(QLabel("SIDETONE LEVEL"))
         self.lbl_sidetone = QLabel("30%")
         self.lbl_sidetone.setObjectName("valueBadge")
         s_top.addWidget(self.lbl_sidetone)
@@ -2232,14 +2341,16 @@ class G502ControlApp(QMainWindow):
         self.side_slider.valueChanged.connect(self.on_sidetone_changed)
         slayout.addWidget(self.side_slider)
 
-        side_hint = QLabel("Sidetone routes your voice directly in hardware with zero latency so you can speak naturally.")
+        side_hint = QLabel("Zero-latency hardware loopback routed directly inside the G733 DSP.")
+        side_hint.setWordWrap(True)
         side_hint.setObjectName("subText")
         slayout.addWidget(side_hint)
         layout.addWidget(side_group)
 
-        meter_group = self.register_card(QGroupBox("Live Mic Level Monitor"))
+        meter_group = self.register_card(QGroupBox("REAL-TIME INPUT PEAK METER (dBFS)"))
         meter_layout = QVBoxLayout(meter_group)
         meter_layout.setSpacing(8)
+        meter_layout.setContentsMargins(0, 8, 0, 6)
         self.mic_meter = QProgressBar()
         self.mic_meter.setRange(0, 100)
         self.mic_meter.setValue(0)
@@ -2255,20 +2366,42 @@ class G502ControlApp(QMainWindow):
         self.lbl_mic_vol.setText(f"{val}%")
         vol_float = val / 100.0
         subprocess.run(['wpctl', 'set-volume', '@DEFAULT_AUDIO_SOURCE@', f"{vol_float:.2f}"], stdout=subprocess.DEVNULL)
+        if hasattr(self, 'stage_widget'):
+            self.stage_widget.set_audio_telemetry(
+                self.hs_vol_slider.value() if hasattr(self, 'hs_vol_slider') else 56,
+                val,
+                self.side_slider.value() if hasattr(self, 'side_slider') else 30,
+                "MUTED" in self.btn_mic_mute.text() if hasattr(self, 'btn_mic_mute') else False
+            )
 
     def toggle_headset_mic(self):
         subprocess.run(['wpctl', 'set-mute', '@DEFAULT_AUDIO_SOURCE@', 'toggle'], stdout=subprocess.DEVNULL)
         res = subprocess.run(['wpctl', 'get-volume', '@DEFAULT_AUDIO_SOURCE@'], capture_output=True, text=True)
-        if '[MUTED]' in res.stdout:
-            self.btn_mic_mute.setText("🔇  Mic MUTED")
+        is_muted = '[MUTED]' in res.stdout
+        if is_muted:
+            self.btn_mic_mute.setText("MIC: MUTED")
             self.btn_mic_mute.setObjectName("stopBtn")
         else:
-            self.btn_mic_mute.setText("🎙️  Mic LIVE (Click to Mute)")
+            self.btn_mic_mute.setText("MIC: LIVE")
             self.btn_mic_mute.setObjectName("accentBtn")
         self.btn_mic_mute.setStyle(self.btn_mic_mute.style())
+        if hasattr(self, 'stage_widget'):
+            self.stage_widget.set_audio_telemetry(
+                self.hs_vol_slider.value() if hasattr(self, 'hs_vol_slider') else 56,
+                self.mic_vol_slider.value() if hasattr(self, 'mic_vol_slider') else 100,
+                self.side_slider.value() if hasattr(self, 'side_slider') else 30,
+                is_muted
+            )
 
     def on_sidetone_changed(self, val):
         self.lbl_sidetone.setText(f"{val}%")
+        if hasattr(self, 'stage_widget'):
+            self.stage_widget.set_audio_telemetry(
+                self.hs_vol_slider.value() if hasattr(self, 'hs_vol_slider') else 56,
+                self.mic_vol_slider.value() if hasattr(self, 'mic_vol_slider') else 100,
+                val,
+                "MUTED" in self.btn_mic_mute.text() if hasattr(self, 'btn_mic_mute') else False
+            )
         try:
             if not hasattr(self, 'sidetone_timer'):
                 self.sidetone_timer = QTimer(self)
@@ -2282,91 +2415,101 @@ class G502ControlApp(QMainWindow):
     def create_headset_rgb_tab(self):
         tab = QWidget()
         layout = QVBoxLayout(tab)
-        layout.setSpacing(14)
-        layout.setContentsMargins(2, 4, 2, 2)
+        layout.setSpacing(12)
+        layout.setContentsMargins(0, 8, 0, 0)
 
-        rgb_group = self.register_card(QGroupBox("Targeted G733 Headset RGB Lightstrip Customizer (HID++)"))
+        rgb_group = self.register_card(QGroupBox("DUAL-ZONE LIGHTSYNC CONTROLLER (HID++)"))
         rlayout = QVBoxLayout(rgb_group)
-        rlayout.setSpacing(12)
+        rlayout.setSpacing(10)
+        rlayout.setContentsMargins(0, 8, 0, 6)
 
-        rlayout.addWidget(QLabel("Directly controls the G733 dual-zone front lightstrips without affecting other devices:"))
+        lbl_rgb_desc = QLabel("Direct HID++ 2.0 addressing for upper and lower G733 front lightstrips:")
+        lbl_rgb_desc.setWordWrap(True)
+        lbl_rgb_desc.setObjectName("subText")
+        rlayout.addWidget(lbl_rgb_desc)
 
-        eff_layout = QHBoxLayout()
-        eff_layout.addWidget(QLabel("Lighting Effect Mode:"))
+        rlayout.addWidget(QLabel("LIGHTING EFFECT MODE"))
         self.combo_hs_effect = QComboBox()
         self.combo_hs_effect.addItem("Static Color", 1)
         self.combo_hs_effect.addItem("Breathing Pulse", 2)
         self.combo_hs_effect.addItem("Spectrum Cycle", 3)
         self.combo_hs_effect.addItem("Stealth (LEDs OFF)", 0)
         self.combo_hs_effect.currentIndexChanged.connect(self.on_hs_effect_changed)
-        eff_layout.addWidget(self.combo_hs_effect)
-        eff_layout.addStretch()
-        rlayout.addLayout(eff_layout)
+        rlayout.addWidget(self.combo_hs_effect)
 
-        btn_color = QPushButton("🎨  Pick Headset Color (Opens Color Picker)...")
+        btn_color = QPushButton("SELECT CUSTOM RGB COLOR...")
         btn_color.setObjectName("accentBtn")
-        btn_color.setFixedHeight(38)
+        btn_color.setFixedHeight(36)
         btn_color.clicked.connect(self.choose_headset_rgb_color)
         rlayout.addWidget(btn_color)
 
-        palette_box = QHBoxLayout()
-        palette_box.addWidget(QLabel("Quick Color Palettes:"))
+        rlayout.addWidget(QLabel("PRESET SWATCHES"))
+        palette_grid = QGridLayout()
+        palette_grid.setSpacing(6)
         colors = [
-            ("Cyan", 0, 255, 255),
-            ("Purple", 180, 0, 255),
-            ("Emerald", 0, 255, 102),
-            ("Red", 255, 0, 51),
-            ("Solar", 255, 200, 0),
+            ("Cyan", 0, 168, 252),
+            ("Cobalt", 59, 130, 246),
+            ("Emerald", 16, 185, 129),
+            ("Crimson", 239, 68, 68),
+            ("Amber", 245, 158, 11),
             ("Stealth OFF", 0, 0, 0)
         ]
-        for cname, r, g, b in colors:
+        for idx_c, (cname, r, g, b) in enumerate(colors):
             btn = QPushButton(cname)
-            btn.clicked.connect(lambda _, cr=r, cg=g, cb=b: set_g733_rgb(cr, cg, cb, mode=1 if (cr or cg or cb) else 0))
-            palette_box.addWidget(btn)
-        palette_box.addStretch()
-        rlayout.addLayout(palette_box)
+            btn.clicked.connect(lambda _, cr=r, cg=g, cb=b: self.apply_headset_swatch(cr, cg, cb))
+            palette_grid.addWidget(btn, idx_c // 3, idx_c % 3)
+        rlayout.addLayout(palette_grid)
 
         layout.addWidget(rgb_group)
         layout.addStretch()
         return tab
 
+    def apply_headset_swatch(self, r, g, b):
+        mode = 1 if (r or g or b) else 0
+        set_g733_rgb(r, g, b, mode=mode)
+        if hasattr(self, 'stage_widget'):
+            self.stage_widget.set_headset_rgb(r, g, b)
+
     def on_hs_effect_changed(self, idx):
         mode = self.combo_hs_effect.currentData()
         if mode == 0:
             set_g733_rgb(0, 0, 0, mode=0)
+            if hasattr(self, 'stage_widget'):
+                self.stage_widget.set_headset_rgb(0, 0, 0)
         elif mode == 3:
             set_g733_rgb(0, 255, 255, mode=3)
+            if hasattr(self, 'stage_widget'):
+                self.stage_widget.set_headset_rgb(0, 255, 255)
         else:
             set_g733_rgb(56, 189, 248, mode=mode)
+            if hasattr(self, 'stage_widget'):
+                self.stage_widget.set_headset_rgb(56, 189, 248)
 
     def choose_headset_rgb_color(self):
-        color = QColorDialog.getColor(QColor("#38BDF8"), self, "Pick G733 Headset RGB Color")
+        color = QColorDialog.getColor(QColor("#00A8FC"), self, "Select G733 LIGHTSYNC RGB Color")
         if color.isValid():
             set_g733_rgb(color.red(), color.green(), color.blue(), mode=1)
+            if hasattr(self, 'stage_widget'):
+                self.stage_widget.set_headset_rgb(color.red(), color.green(), color.blue())
 
     # ------------------ Battery & Info Tab ------------------
     def create_headset_info_tab(self):
         tab = QWidget()
         layout = QVBoxLayout(tab)
-        layout.setSpacing(14)
-        layout.setContentsMargins(2, 4, 2, 2)
+        layout.setSpacing(12)
+        layout.setContentsMargins(0, 8, 0, 0)
 
-        bat_group = self.register_card(QGroupBox("Wireless Battery Indication && Voice Announcement"))
+        bat_group = self.register_card(QGroupBox("LI-PO BATTERY TELEMETRY && TTS"))
         blayout = QVBoxLayout(bat_group)
-        blayout.setSpacing(10)
+        blayout.setSpacing(8)
+        blayout.setContentsMargins(0, 8, 0, 6)
 
         b_top = QHBoxLayout()
-        b_top.addWidget(QLabel("Battery Charge Level:"))
+        b_top.addWidget(QLabel("CHARGE STATE"))
         self.lbl_hs_battery_pct = QLabel("85% (Discharging)")
         self.lbl_hs_battery_pct.setObjectName("valueBadge")
         b_top.addWidget(self.lbl_hs_battery_pct)
         b_top.addStretch()
-
-        btn_speak = QPushButton("🔊  Hear Battery Charge % (Voice)")
-        btn_speak.setObjectName("accentBtn")
-        btn_speak.clicked.connect(self.speak_current_battery)
-        b_top.addWidget(btn_speak)
-
         blayout.addLayout(b_top)
 
         self.bar_hs_battery = QProgressBar()
@@ -2374,27 +2517,34 @@ class G502ControlApp(QMainWindow):
         self.bar_hs_battery.setValue(85)
         blayout.addWidget(self.bar_hs_battery)
 
-        self.lbl_hs_mv = QLabel("Voltage: 3958 mV (Smoothed G HUB 5% steps)")
+        self.lbl_hs_mv = QLabel("CELL VOLTAGE: 3958 mV (HYSTERESIS 5% STEP)")
         self.lbl_hs_mv.setObjectName("subText")
         blayout.addWidget(self.lbl_hs_mv)
 
-        note_label = QLabel("💡 Pressing the power button on your headset (or clicking above) speaks the remaining battery charge out loud.")
-        note_label.setObjectName("accentTitle")
+        btn_speak = QPushButton("ANNOUNCE BATTERY PERCENTAGE (TTS)")
+        btn_speak.setObjectName("accentBtn")
+        btn_speak.setFixedHeight(34)
+        btn_speak.clicked.connect(self.speak_current_battery)
+        blayout.addWidget(btn_speak)
+
+        note_label = QLabel("Physical G733 power button press triggers automatic TTS battery readout.")
+        note_label.setWordWrap(True)
+        note_label.setObjectName("subText")
         blayout.addWidget(note_label)
 
         layout.addWidget(bat_group)
 
-        grp = self.register_card(QGroupBox("G733 Hardware Information && Connection"))
+        grp = self.register_card(QGroupBox("HARDWARE SPECIFICATION"))
         glayout = QVBoxLayout(grp)
+        glayout.setContentsMargins(0, 8, 0, 6)
 
         info_text = QLabel(
-            "• Model: Logitech G733 LIGHTSPEED Wireless Gaming Headset\n"
-            "• USB Product ID: 046d:0ab5\n"
-            "• Driver Backend: Native HID++ 2.0 + PipeWire / WirePlumber + ALSA\n"
-            "• Connection Type: 2.4GHz LIGHTSPEED Wireless Dongle\n"
-            "• Status: ONLINE & Connected"
+            "MODEL:       Logitech G733 LIGHTSPEED Wireless\n"
+            "USB ID:      046d:0ab5\n"
+            "TRANSPORT:   2.4 GHz LIGHTSPEED Receiver\n"
+            "PROTOCOL:    HID++ 2.0 / PipeWire / ALSA"
         )
-        info_text.setFont(QFont("Segoe UI", 11))
+        info_text.setFont(QFont("JetBrains Mono", 9))
         info_text.setObjectName("subText")
         glayout.addWidget(info_text)
 
@@ -2410,14 +2560,14 @@ class G502ControlApp(QMainWindow):
             res = subprocess.run(['systemctl', '--user', 'is-active', 'g502-macros.service'], capture_output=True, text=True)
             active = res.stdout.strip() == 'active'
             if active:
-                self.status_badge.setText("● MACROS ACTIVE")
+                self.status_badge.setText("DAEMON: ACTIVE")
                 self.status_badge.setObjectName("statusBadgeActive")
-                self.btn_toggle_service.setText("Stop Service")
+                self.btn_toggle_service.setText("STOP DAEMON")
                 self.btn_toggle_service.setObjectName("stopBtn")
             else:
-                self.status_badge.setText("● MACROS INACTIVE")
+                self.status_badge.setText("DAEMON: INACTIVE")
                 self.status_badge.setObjectName("statusBadgeInactive")
-                self.btn_toggle_service.setText("Start Service")
+                self.btn_toggle_service.setText("START DAEMON")
                 self.btn_toggle_service.setObjectName("accentBtn")
             self.status_badge.setStyle(self.status_badge.style())
             self.btn_toggle_service.setStyle(self.btn_toggle_service.style())
@@ -2442,6 +2592,9 @@ class G502ControlApp(QMainWindow):
         self.dpi_slider.setValue(dpi)
         self.dpi_slider.blockSignals(False)
         self.dpi_val_label.setText(f"{dpi} DPI")
+
+        if hasattr(self, 'stage_widget'):
+            self.stage_widget.set_mouse_state(self.active_button_key, self.buttons_cfg, dpi)
 
         dev_id = self.get_selected_ratbag_dev_id()
         if dev_id:
