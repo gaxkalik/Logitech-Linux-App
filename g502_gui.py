@@ -1001,14 +1001,15 @@ def set_g502_rgb(r, g, b, mode=1, brightness=100, zone=None):
 
 
 def set_g733_rgb(r, g, b, mode=1, brightness=100, zone=None):
-    """Sets G733 LIGHTSPEED dual-zone RGB via both HID++ and ratbagd."""
+    """Sets G733 LIGHTSPEED dual-zone RGB via native HID++ 2.0 Feature 0x8070 (COLOR_LED_EFFECTS)."""
     scale = max(0.0, min(1.0, brightness / 100.0))
-    sr = max(0, min(255, int(round(r * scale))))
-    sg = max(0, min(255, int(round(g * scale))))
-    sb = max(0, min(255, int(round(b * scale))))
-
-    # Trigger ratbagd hardware LED update asynchronously
-    set_device_rgb_via_ratbag("G733", r, g, b, mode=mode, brightness=brightness, zone=zone)
+    r_raw = max(0, min(255, int(r)))
+    g_raw = max(0, min(255, int(g)))
+    b_raw = max(0, min(255, int(b)))
+    sr = max(0, min(255, int(round(r_raw * scale))))
+    sg = max(0, min(255, int(round(g_raw * scale))))
+    sb = max(0, min(255, int(round(b_raw * scale))))
+    bright_byte = max(0, min(100, int(brightness)))
 
     dev_path = find_g733_hidraw()
     if not dev_path:
@@ -1016,13 +1017,29 @@ def set_g733_rgb(r, g, b, mode=1, brightness=100, zone=None):
         return False
     try:
         fd = os.open(dev_path, os.O_RDWR | os.O_NONBLOCK)
-        target_zones = [0, 1, 0xFF] if zone is None else [int(zone)]
+        # 1. Enable Software RGB Control on Feature 0x8070 (index 0x04, func 8 = 0x80)
+        sw_cmd = bytes([0x11, 0xFF, 0x04, 0x80, 0x01, 0x01, 0x00] + [0x00] * 13)
+        os.write(fd, sw_cmd)
+        time.sleep(0.01)
+
+        # 2. Send setZoneEffect (index 0x04, func 3 = 0x30) to Zones 0 (Upper) and 1 (Lower)
+        target_zones = [0, 1] if zone is None else [int(zone)]
         for z in target_zones:
-            cmd = bytes([0x11, 0xFF, 0x04, 0x10, z, mode, sr, sg, sb, 0x00, 0x00, int(brightness)] + [0x00]*8)
+            if mode == 0 or bright_byte <= 0 or (r_raw == 0 and g_raw == 0 and b_raw == 0 and mode != 3):
+                cmd = bytes([0x11, 0xFF, 0x04, 0x30, z, 0x00] + [0x00] * 14)
+            elif mode == 2:
+                # Breathing Pulse: [zone, 0x02, R, G, B, period_hi(0x0B), period_lo(0xB8=3000ms), 0x00, brightness]
+                cmd = bytes([0x11, 0xFF, 0x04, 0x30, z, 0x02, r_raw, g_raw, b_raw, 0x0B, 0xB8, 0x00, bright_byte] + [0x00] * 7)
+            elif mode == 3:
+                # Spectrum Cycle: [zone, 0x03, 0, 0, 0, 0, 0, period_hi(0x13), period_lo(0x88=5000ms), brightness]
+                cmd = bytes([0x11, 0xFF, 0x04, 0x30, z, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x13, 0x88, bright_byte] + [0x00] * 6)
+            else:
+                # Static Color: [zone, 0x01, sr, sg, sb, 0x02, 0, 0, 0, 0, 0, brightness]
+                cmd = bytes([0x11, 0xFF, 0x04, 0x30, z, 0x01, sr, sg, sb, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, bright_byte] + [0x00] * 4)
             os.write(fd, cmd)
             time.sleep(0.01)
         os.close(fd)
-        logging.info(f"Targeted G733 Headset RGB set to R={sr} G={sg} B={sb} Brightness={brightness}% (Mode {mode})")
+        logging.info(f"Targeted G733 Headset RGB set to R={sr} G={sg} B={sb} Brightness={bright_byte}% (Mode {mode})")
         return True
     except Exception as ex:
         logging.error(f"Error setting G733 RGB: {ex}")
@@ -2844,7 +2861,15 @@ class G502ControlApp(QMainWindow):
         self.headset_rgb_color = (r, g, b)
         if hasattr(self, 'lbl_hs_color_hex'):
             self.lbl_hs_color_hex.setText(f"COLOR: #{r:02X}{g:02X}{b:02X}")
-        mode = 1 if (r or g or b) else 0
+        cur_mode = self.combo_hs_effect.currentData() if hasattr(self, 'combo_hs_effect') else 1
+        if r == 0 and g == 0 and b == 0:
+            mode = 0
+        else:
+            mode = cur_mode if cur_mode in (1, 2) else 1
+            if hasattr(self, 'combo_hs_effect') and cur_mode not in (1, 2):
+                self.combo_hs_effect.blockSignals(True)
+                self.combo_hs_effect.setCurrentIndex(0)  # Static Color
+                self.combo_hs_effect.blockSignals(False)
         zone = self.combo_hs_zone.currentData() if hasattr(self, 'combo_hs_zone') else None
         set_g733_rgb(r, g, b, mode=mode, brightness=self.headset_brightness, zone=zone)
         scale = self.headset_brightness / 100.0

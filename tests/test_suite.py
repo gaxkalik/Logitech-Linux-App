@@ -127,20 +127,22 @@ class TestG733HardwareDriver(unittest.TestCase):
         self.assertEqual(status3, "Charging")
         self.assertEqual(mv3, 4130)
 
-    @patch("g502_gui.set_device_rgb_via_ratbag", return_value=True)
     @patch("g502_gui.find_g733_hidraw")
     @patch("os.open")
     @patch("os.write")
     @patch("os.close")
     @patch("time.sleep")
-    def test_set_g733_rgb_and_sidetone(self, mock_sleep, mock_close, mock_write, mock_open_fd, mock_find, mock_ratbag_rgb):
+    def test_set_g733_rgb_and_sidetone(self, mock_sleep, mock_close, mock_write, mock_open_fd, mock_find):
         mock_find.return_value = "/dev/hidraw3"
         mock_open_fd.return_value = 42
 
         ok_rgb = g502_gui.set_g733_rgb(56, 189, 248, mode=1, brightness=80)
         self.assertTrue(ok_rgb)
-        self.assertEqual(mock_write.call_count, 3)  # Zones 0, 1, 0xFF
-        mock_ratbag_rgb.assert_called_once()
+        self.assertEqual(mock_write.call_count, 3)  # 1x 0x80 (SW control) + 2x 0x30 (Zones 0, 1)
+        sw_pkt = mock_write.call_args_list[0][0][1]
+        z0_pkt = mock_write.call_args_list[1][0][1]
+        self.assertEqual(sw_pkt[:5], bytes([0x11, 0xFF, 0x04, 0x80, 0x01]))
+        self.assertEqual(z0_pkt[:6], bytes([0x11, 0xFF, 0x04, 0x30, 0x00, 0x01]))
 
         mock_write.reset_mock()
         ok_side = g502_gui.set_g733_sidetone(50)
