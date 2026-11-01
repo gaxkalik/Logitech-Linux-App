@@ -888,9 +888,13 @@ def get_g733_battery_info():
         while time.time() - t0 < 0.15:
             try:
                 b = os.read(fd, 64)
-                if b and len(b) >= 7 and b[0] == 0x11 and b[2] == 0x08:
-                    res = b
-                    break
+                if b and len(b) >= 7 and b[0] == 0x11:
+                    if b[2] == 0x08:
+                        res = b
+                        break
+                    elif b[2] == 0xFF and b[3] == 0x08:
+                        # Headset powered off or asleep (HID++ 0xFF error on feature 0x08)
+                        break
             except BlockingIOError:
                 pass
             time.sleep(0.005)
@@ -901,6 +905,8 @@ def get_g733_battery_info():
         if res:
             mV = (res[4] << 8) | res[5]
             status_code = res[6]
+            if mV < 2500:
+                return None, "Disconnected", 0
             status_str = "Charging" if status_code == 3 else ("Full" if status_code == 2 else "Discharging")
             
             # Logitech G733 Li-Po discharge curve mapped to 5% G HUB steps
@@ -1224,9 +1230,11 @@ def load_app_settings():
         "mouse_rgb": [0, 168, 252],
         "mouse_brightness": 100,
         "mouse_rgb_mode": 1,
+        "mouse_rgb_zone": None,
         "headset_rgb": [0, 168, 252],
         "headset_brightness": 100,
-        "headset_rgb_mode": 1
+        "headset_rgb_mode": 1,
+        "headset_rgb_zone": None
     }
     if os.path.exists(SETTINGS_PATH):
         try:
@@ -1242,6 +1250,20 @@ def save_app_settings(settings):
     os.makedirs(os.path.dirname(SETTINGS_PATH), exist_ok=True)
     with open(SETTINGS_PATH, 'w') as f:
         json.dump(settings, f, indent=4)
+
+
+def apply_saved_g733_rgb_from_settings(settings=None):
+    """Reads persisted G733 RGB effect, color, brightness, and zone from settings and applies to hardware."""
+    if settings is None:
+        settings = load_app_settings()
+    rgb = settings.get("headset_rgb", [0, 168, 252])
+    r, g, b = int(rgb[0]), int(rgb[1]), int(rgb[2])
+    brightness = int(settings.get("headset_brightness", 100))
+    mode = int(settings.get("headset_rgb_mode", 1))
+    zone = settings.get("headset_rgb_zone", None)
+    if mode == 3 and r == 0 and g == 0 and b == 0:
+        r, g, b = 0, 255, 255
+    return set_g733_rgb(r, g, b, mode=mode, brightness=brightness, zone=zone)
 
 def get_all_ratbag_mice():
     mice = []
@@ -1728,10 +1750,14 @@ class G502ControlApp(QMainWindow):
         self.mic_meter_thread.level_signal.connect(self.update_mic_meter_level)
         self.mic_meter_thread.start()
 
-        # Status & Battery Refresh Timer
+        # Track G733 wireless connection state for automatic RGB restore after headphone restart
+        self._g733_was_online = True
+        self.reapply_saved_headset_rgb()
+
+        # Status & Battery Refresh Timer (2s cadence to quickly detect headphone power-cycle)
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.periodic_refresh)
-        self.timer.start(5000)
+        self.timer.start(2000)
         self.periodic_refresh()
 
     def on_back_button_clicked(self):
@@ -1831,9 +1857,34 @@ class G502ControlApp(QMainWindow):
         self.update_daemon_status()
         self.refresh_battery_status()
 
+    def reapply_saved_headset_rgb(self):
+        """Re-applies the user's persisted G733 LIGHTSYNC effect, color, brightness, and zone."""
+        r, g, b = getattr(self, 'headset_rgb_color', tuple(self.app_settings.get("headset_rgb", [0, 168, 252])))
+        brightness = int(getattr(self, 'headset_brightness', self.app_settings.get("headset_brightness", 100)))
+        mode = self.combo_hs_effect.currentData() if hasattr(self, 'combo_hs_effect') else int(self.app_settings.get("headset_rgb_mode", 1))
+        zone = self.combo_hs_zone.currentData() if hasattr(self, 'combo_hs_zone') else self.app_settings.get("headset_rgb_zone", None)
+        if mode == 0:
+            set_g733_rgb(0, 0, 0, mode=0, brightness=0, zone=zone)
+        elif mode == 3:
+            set_g733_rgb(0, 255, 255, mode=3, brightness=brightness, zone=zone)
+        else:
+            if r == 0 and g == 0 and b == 0:
+                r, g, b = 56, 189, 248
+            set_g733_rgb(r, g, b, mode=mode, brightness=brightness, zone=zone)
+
+    def schedule_headset_rgb_restore(self):
+        """Re-applies G733 RGB immediately and across the headset firmware boot window."""
+        self.reapply_saved_headset_rgb()
+        for delay_ms in (800, 1800, 3200):
+            QTimer.singleShot(delay_ms, self.reapply_saved_headset_rgb)
+
     def refresh_battery_status(self):
         pct, status_str, mV = get_g733_battery_info()
         if pct is not None:
+            if not getattr(self, '_g733_was_online', True):
+                self._g733_was_online = True
+                logging.info("G733 headset power-on/reconnect detected; restoring saved LIGHTSYNC effect.")
+                self.schedule_headset_rgb_restore()
             self.lbl_header_battery.setText(f"G733: {pct}% ({status_str.split()[0].upper()})")
             if hasattr(self, 'lbl_hs_battery_pct'):
                 self.lbl_hs_battery_pct.setText(f"{pct}% ({status_str})")
@@ -1846,10 +1897,11 @@ class G502ControlApp(QMainWindow):
             if hasattr(self, 'tray_icon'):
                 self.tray_icon.setToolTip(f"Logitech Linux Control Suite — G733: {pct}% ({status_str})")
         else:
+            self._g733_was_online = False
             self.lbl_header_battery.setText("G733: OFFLINE")
 
     def speak_current_battery(self):
-        """Speaks the current battery percentage out loud."""
+        """Speaks the current battery percentage out loud and ensures saved RGB stays active after power button press."""
         pct, status_str, mV = get_g733_battery_info()
         if pct is not None:
             speak_text(f"Battery {pct} percent")
@@ -1858,7 +1910,10 @@ class G502ControlApp(QMainWindow):
             if hasattr(self, 'lbl_header_battery'):
                 self.lbl_header_battery.setText(f"G733: {pct}% (TTS)")
             logging.info(f"Spoken battery announcement triggered: {pct}%")
+            QTimer.singleShot(600, self.reapply_saved_headset_rgb)
+            QTimer.singleShot(1800, self.reapply_saved_headset_rgb)
         else:
+            self._g733_was_online = False
             speak_text("Headset disconnected")
             if hasattr(self, 'lbl_hs_battery_pct'):
                 self.lbl_hs_battery_pct.setText("DISCONNECTED")
@@ -2354,6 +2409,11 @@ class G502ControlApp(QMainWindow):
         self.combo_mouse_zone.addItem("All Zones (DPI + G Logo)", None)
         self.combo_mouse_zone.addItem("Zone 0 — DPI Indicator", 0)
         self.combo_mouse_zone.addItem("Zone 1 — G502 Emblem Logo", 1)
+        saved_m_zone = self.app_settings.get("mouse_rgb_zone", None)
+        for z_idx in range(self.combo_mouse_zone.count()):
+            if self.combo_mouse_zone.itemData(z_idx) == saved_m_zone:
+                self.combo_mouse_zone.setCurrentIndex(z_idx)
+                break
         self.combo_mouse_zone.currentIndexChanged.connect(self.on_mouse_rgb_params_changed)
         rgb_layout.addWidget(self.combo_mouse_zone)
 
@@ -2363,6 +2423,11 @@ class G502ControlApp(QMainWindow):
         self.combo_mouse_effect.addItem("Breathing Pulse", 2)
         self.combo_mouse_effect.addItem("Spectrum Cycle", 3)
         self.combo_mouse_effect.addItem("Stealth (LEDs OFF)", 0)
+        saved_m_mode = int(self.app_settings.get("mouse_rgb_mode", 1))
+        for m_idx in range(self.combo_mouse_effect.count()):
+            if self.combo_mouse_effect.itemData(m_idx) == saved_m_mode:
+                self.combo_mouse_effect.setCurrentIndex(m_idx)
+                break
         self.combo_mouse_effect.currentIndexChanged.connect(self.on_mouse_rgb_params_changed)
         rgb_layout.addWidget(self.combo_mouse_effect)
 
@@ -2434,6 +2499,8 @@ class G502ControlApp(QMainWindow):
         if hasattr(self, 'home_widget'):
             self.home_widget.set_mouse_rgb(vr, vg, vb)
         self.app_settings["mouse_rgb"] = [r, g, b]
+        self.app_settings["mouse_rgb_mode"] = mode
+        self.app_settings["mouse_rgb_zone"] = zone
         save_app_settings(self.app_settings)
 
     def on_mouse_brightness_changed(self, val):
@@ -2457,6 +2524,8 @@ class G502ControlApp(QMainWindow):
         r, g, b = self.mouse_rgb_color
         mode = self.combo_mouse_effect.currentData() if hasattr(self, 'combo_mouse_effect') else 1
         zone = self.combo_mouse_zone.currentData() if hasattr(self, 'combo_mouse_zone') else None
+        self.app_settings["mouse_rgb_mode"] = mode
+        self.app_settings["mouse_rgb_zone"] = zone
         if mode == 0:
             set_g502_rgb(0, 0, 0, mode=0, brightness=0, zone=zone)
             if hasattr(self, 'stage_widget'):
@@ -2798,6 +2867,11 @@ class G502ControlApp(QMainWindow):
         self.combo_hs_zone.addItem("All Zones (Upper + Lower Strips)", None)
         self.combo_hs_zone.addItem("Zone 0 — Upper Lightstrip", 0)
         self.combo_hs_zone.addItem("Zone 1 — Lower Lightstrip", 1)
+        saved_hs_zone = self.app_settings.get("headset_rgb_zone", None)
+        for z_idx in range(self.combo_hs_zone.count()):
+            if self.combo_hs_zone.itemData(z_idx) == saved_hs_zone:
+                self.combo_hs_zone.setCurrentIndex(z_idx)
+                break
         self.combo_hs_zone.currentIndexChanged.connect(self.on_hs_effect_changed)
         rlayout.addWidget(self.combo_hs_zone)
 
@@ -2807,6 +2881,11 @@ class G502ControlApp(QMainWindow):
         self.combo_hs_effect.addItem("Breathing Pulse", 2)
         self.combo_hs_effect.addItem("Spectrum Cycle", 3)
         self.combo_hs_effect.addItem("Stealth (LEDs OFF)", 0)
+        saved_hs_mode = int(self.app_settings.get("headset_rgb_mode", 1))
+        for m_idx in range(self.combo_hs_effect.count()):
+            if self.combo_hs_effect.itemData(m_idx) == saved_hs_mode:
+                self.combo_hs_effect.setCurrentIndex(m_idx)
+                break
         self.combo_hs_effect.currentIndexChanged.connect(self.on_hs_effect_changed)
         rlayout.addWidget(self.combo_hs_effect)
 
@@ -2879,6 +2958,8 @@ class G502ControlApp(QMainWindow):
         if hasattr(self, 'home_widget'):
             self.home_widget.set_headset_rgb(vr, vg, vb)
         self.app_settings["headset_rgb"] = [r, g, b]
+        self.app_settings["headset_rgb_mode"] = mode
+        self.app_settings["headset_rgb_zone"] = zone
         save_app_settings(self.app_settings)
 
     def on_hs_brightness_changed(self, val):
@@ -2901,6 +2982,8 @@ class G502ControlApp(QMainWindow):
     def on_hs_effect_changed(self, idx):
         mode = self.combo_hs_effect.currentData() if hasattr(self, 'combo_hs_effect') else 1
         zone = self.combo_hs_zone.currentData() if hasattr(self, 'combo_hs_zone') else None
+        self.app_settings["headset_rgb_mode"] = mode
+        self.app_settings["headset_rgb_zone"] = zone
         r, g, b = self.headset_rgb_color
         if mode == 0:
             set_g733_rgb(0, 0, 0, mode=0, brightness=0, zone=zone)
@@ -2914,6 +2997,7 @@ class G502ControlApp(QMainWindow):
             if r == 0 and g == 0 and b == 0:
                 r, g, b = 56, 189, 248
                 self.headset_rgb_color = (r, g, b)
+                self.app_settings["headset_rgb"] = [r, g, b]
             set_g733_rgb(r, g, b, mode=mode, brightness=self.headset_brightness, zone=zone)
             scale = self.headset_brightness / 100.0
             if hasattr(self, 'stage_widget'):

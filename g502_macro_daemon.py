@@ -28,6 +28,7 @@ logging.basicConfig(
 )
 
 CONFIG_PATH = os.path.expanduser('~/.config/g502_macros/config.json')
+SETTINGS_PATH = os.path.expanduser('~/.config/g502_macros/settings.json')
 
 # Hardware Event IDs
 CODE_G7 = e.BTN_FORWARD   # 277 (Button 6 - DPI Down)
@@ -250,8 +251,109 @@ class G502MacroDaemon:
             self.ui.write(down_type, down_code, 0)
             self.ui.syn()
 
+    def find_g733_hidraw(self):
+        for h in glob.glob('/sys/class/hidraw/hidraw*'):
+            uevent = os.path.join(h, 'device', 'uevent')
+            if os.path.exists(uevent):
+                try:
+                    with open(uevent, 'r') as f:
+                        content = f.read().upper()
+                        if '046D' in content and '0AB5' in content:
+                            return f"/dev/{os.path.basename(h)}"
+                except Exception:
+                    pass
+        return None
+
+    def is_g733_online(self, dev_path):
+        try:
+            fd = os.open(dev_path, os.O_RDWR | os.O_NONBLOCK)
+            os.write(fd, bytes([0x11, 0xFF, 0x08, 0x00] + [0] * 16))
+            online = False
+            t0 = time.time()
+            while time.time() - t0 < 0.12:
+                try:
+                    b = os.read(fd, 64)
+                    if b and len(b) >= 7 and b[0] == 0x11:
+                        if b[2] == 0x08:
+                            mV = (b[4] << 8) | b[5]
+                            online = (mV >= 2500)
+                            break
+                        elif b[2] == 0xFF and b[3] == 0x08:
+                            online = False
+                            break
+                except BlockingIOError:
+                    pass
+                time.sleep(0.005)
+            os.close(fd)
+            return online
+        except Exception:
+            return False
+
+    def apply_saved_g733_rgb(self):
+        """Reads saved G733 RGB settings from settings.json and applies them via HID++ 0x8070."""
+        dev_path = self.find_g733_hidraw()
+        if not dev_path or not os.path.exists(SETTINGS_PATH):
+            return False
+        try:
+            with open(SETTINGS_PATH, 'r') as f:
+                settings = json.load(f)
+            rgb = settings.get("headset_rgb", [0, 168, 252])
+            r_raw = max(0, min(255, int(rgb[0])))
+            g_raw = max(0, min(255, int(rgb[1])))
+            b_raw = max(0, min(255, int(rgb[2])))
+            brightness = max(0, min(100, int(settings.get("headset_brightness", 100))))
+            mode = int(settings.get("headset_rgb_mode", 1))
+            zone = settings.get("headset_rgb_zone", None)
+            scale = brightness / 100.0
+            sr = max(0, min(255, int(round(r_raw * scale))))
+            sg = max(0, min(255, int(round(g_raw * scale))))
+            sb = max(0, min(255, int(round(b_raw * scale))))
+
+            fd = os.open(dev_path, os.O_RDWR | os.O_NONBLOCK)
+            os.write(fd, bytes([0x11, 0xFF, 0x04, 0x80, 0x01, 0x01, 0x00] + [0] * 13))
+            time.sleep(0.01)
+            target_zones = [0, 1] if zone is None else [int(zone)]
+            for z in target_zones:
+                if mode == 0 or brightness <= 0 or (r_raw == 0 and g_raw == 0 and b_raw == 0 and mode != 3):
+                    cmd = bytes([0x11, 0xFF, 0x04, 0x30, z, 0x00] + [0] * 14)
+                elif mode == 2:
+                    cmd = bytes([0x11, 0xFF, 0x04, 0x30, z, 0x02, r_raw, g_raw, b_raw, 0x0B, 0xB8, 0x00, brightness] + [0] * 7)
+                elif mode == 3:
+                    cmd = bytes([0x11, 0xFF, 0x04, 0x30, z, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x13, 0x88, brightness] + [0] * 6)
+                else:
+                    cmd = bytes([0x11, 0xFF, 0x04, 0x30, z, 0x01, sr, sg, sb, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, brightness] + [0] * 4)
+                os.write(fd, cmd)
+                time.sleep(0.01)
+            os.close(fd)
+            logging.info(f"Restored persistent G733 RGB effect (mode={mode}, brightness={brightness}%) after headset power-on.")
+            return True
+        except Exception as ex:
+            logging.debug(f"Could not apply saved G733 RGB: {ex}")
+            return False
+
+    def g733_rgb_watchdog_loop(self):
+        """Monitors G733 wireless power state and restores saved RGB effect whenever headset restarts."""
+        was_online = False
+        while self.running:
+            dev_path = self.find_g733_hidraw()
+            if dev_path:
+                online = self.is_g733_online(dev_path)
+                if online and not was_online:
+                    was_online = True
+                    # Apply immediately and across the G733 firmware boot animation window
+                    self.apply_saved_g733_rgb()
+                    for wait_s in (0.9, 1.2):
+                        if not self.running:
+                            break
+                        time.sleep(wait_s)
+                        self.apply_saved_g733_rgb()
+                elif not online:
+                    was_online = False
+            time.sleep(1.5)
+
     def run(self):
         logging.info("G502 Dynamic Macro Daemon starting...")
+        threading.Thread(target=self.g733_rgb_watchdog_loop, daemon=True).start()
         while self.running:
             dev = self.find_g502_device()
             if not dev:

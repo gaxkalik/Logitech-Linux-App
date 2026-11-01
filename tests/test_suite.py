@@ -459,9 +459,21 @@ class TestGUIWindowAndTabs(unittest.TestCase):
             mock_m_rgb.assert_called_with(16, 185, 129, mode=1, brightness=65, zone=None)
 
         with patch("g502_gui.set_g733_rgb") as mock_h_rgb:
+            self.win.combo_hs_effect.setCurrentIndex(1)  # Breathing Pulse (mode 2)
             self.win.hs_brightness_slider.setValue(75)
             self.win.apply_headset_swatch(168, 85, 247)
-            mock_h_rgb.assert_called_with(168, 85, 247, mode=1, brightness=75, zone=None)
+            mock_h_rgb.assert_called_with(168, 85, 247, mode=2, brightness=75, zone=None)
+            self.assertEqual(self.win.app_settings.get("headset_rgb_mode"), 2)
+
+            # Simulate G733 power-off (offline) followed by power-on (online) and verify effect is re-applied
+            mock_h_rgb.reset_mock()
+            with patch("g502_gui.get_g733_battery_info", return_value=(None, "Disconnected", 0)):
+                self.win.refresh_battery_status()
+                self.assertFalse(self.win._g733_was_online)
+            with patch("g502_gui.get_g733_battery_info", return_value=(90, "Discharging", 3990)):
+                self.win.refresh_battery_status()
+                self.assertTrue(self.win._g733_was_online)
+                mock_h_rgb.assert_called_with(168, 85, 247, mode=2, brightness=75, zone=None)
 
         # 6. XDG Autostart .desktop creation and removal
         with tempfile.TemporaryDirectory() as tmpdir:
